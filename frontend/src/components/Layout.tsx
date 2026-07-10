@@ -30,7 +30,7 @@ export function Layout() {
     try {
       await apiPost('/api/auth/logout');
     } catch {
-      // ignore — server may have already expired the session
+      // ignore
     }
     qc.clear();
     qc.setQueryData(['me'], null);
@@ -42,35 +42,42 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-border bg-surface/60 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <Link to="/" className="font-semibold text-lg">
-            {t('app.title')}
+      <header className="border-b border-ink">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-baseline gap-8">
+          <Link to="/" className="font-serif text-2xl tracking-tight">
+            PartStock
           </Link>
-          <span className="text-xs text-zinc-500 hidden md:inline">{t('app.tagline')}</span>
-          <nav className="flex items-center gap-1 ml-4">
+          <nav className="flex items-baseline gap-6 text-sm">
             {isAuthed && !isLoginPage && (
               <>
                 <NavLink to="/parts" label={t('nav.parts')} active={path.startsWith('/parts')} />
-                <NavLink to="/locations" label={t('nav.locations')} active={path.startsWith('/locations')} />
+                <NavLink
+                  to="/locations"
+                  label={t('nav.locations')}
+                  active={path.startsWith('/locations')}
+                />
                 <NavLink to="/stock" label={t('nav.stock')} active={path.startsWith('/stock')} />
               </>
             )}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-baseline gap-4 text-sm">
             <select
               aria-label={t('app.language')}
-              className="input w-auto py-1 text-xs"
+              className="bg-transparent text-xs text-muted border-0 focus:outline-none cursor-pointer"
               value={i18n.language}
               onChange={(e) => setLang(e.target.value)}
             >
-              <option value="vi">Tiếng Việt</option>
-              <option value="en">English</option>
+              <option value="vi">VI</option>
+              <option value="en">EN</option>
             </select>
             {isAuthed && (
               <>
-                <span className="text-xs text-zinc-400 hidden sm:inline">{meQ.data?.user.name}</span>
-                <button type="button" className="btn-ghost text-xs" onClick={logout}>
+                <span className="text-muted hidden sm:inline">{meQ.data?.user.name}</span>
+                <button
+                  type="button"
+                  className="text-muted hover:text-ink transition"
+                  onClick={logout}
+                >
                   {t('app.logout')}
                 </button>
               </>
@@ -79,23 +86,27 @@ export function Layout() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
         <Outlet />
       </main>
-
-      <footer className="border-t border-border py-3 text-center text-xs text-zinc-500">
-        MIT · self-hosted · your data, your server
-      </footer>
     </div>
   );
 }
 
-function NavLink({ to, label, active }: { to: '/parts' | '/locations' | '/stock'; label: string; active: boolean }) {
+function NavLink({
+  to,
+  label,
+  active,
+}: {
+  to: '/parts' | '/locations' | '/stock';
+  label: string;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}
-      className={`px-3 py-1.5 rounded-md text-sm transition ${
-        active ? 'bg-accent/15 text-accent' : 'text-zinc-300 hover:bg-surface'
+      className={`pb-0.5 border-b-2 transition ${
+        active ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
       }`}
     >
       {label}

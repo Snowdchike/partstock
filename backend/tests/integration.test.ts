@@ -102,6 +102,24 @@ describe('auth', () => {
     expect((res.json() as { error: { code: string } }).error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('accepts 8-char password with complexity', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { email: 'ok8@example.com', name: 'OK8', password: 'Abcd1234' },
+    });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('rejects 8-char password missing complexity', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { email: 'nosym@example.com', name: 'NoSym', password: 'alllower1' },
+    });
+    expect(res.statusCode).toBe(422);
+  });
+
   it('rejects wrong password on login with 401', async () => {
     await app.inject({
       method: 'POST',

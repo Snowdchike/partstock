@@ -3,46 +3,55 @@
 @tailwind utilities;
 
 :root {
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  font-feature-settings: 'tnum' 1, 'kern' 1, 'liga' 1;
+}
+
+body {
+  font-feature-settings: 'tnum' 1;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular numerals for stock quantities and counts. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm transition disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-accent text-white hover:bg-accent/90;
+    @apply btn bg-ink text-paper hover:bg-ink/85;
   }
   .btn-ghost {
-    @apply btn text-zinc-300 hover:bg-surface;
+    @apply btn text-ink/70 hover:text-ink hover:bg-card;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn text-warn hover:bg-warn/10;
   }
   .input {
-    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-accent focus:outline-none;
+    @apply w-full border-0 border-b border-rule bg-transparent px-1 py-1.5 text-sm text-ink
+      placeholder-muted/60 focus:border-ink focus:outline-none focus:ring-0;
   }
   .label {
-    @apply block text-xs font-medium text-zinc-400 mb-1;
+    @apply block text-xs uppercase tracking-wider text-muted mb-1;
   }
-  .card {
-    @apply rounded-lg border border-border bg-surface p-4;
+  .rule {
+    @apply border-rule;
   }
-  .table-wrap {
-    @apply rounded-lg border border-border overflow-hidden;
-  }
-  .table {
+  /* Hairline table — no rounded corners, no shadows. */
+  .table-hairline {
     @apply w-full text-sm;
   }
-  .table th {
-    @apply bg-surface text-left text-xs font-medium text-zinc-400 px-3 py-2 border-b border-border;
+  .table-hairline thead th {
+    @apply text-left text-xs uppercase tracking-wider font-medium text-muted py-2 border-b border-ink;
   }
-  .table td {
-    @apply px-3 py-2 border-b border-border/50;
+  .table-hairline tbody td {
+    @apply py-2 border-b border-rule align-top;
   }
-  .table tbody tr:hover {
-    @apply bg-surface/50;
+  .table-hairline tbody tr:hover td {
+    @apply bg-card/60;
   }
 }

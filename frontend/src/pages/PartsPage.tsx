@@ -41,65 +41,63 @@ export function PartsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parts'] }),
   });
 
-  if (parts.isLoading) return <div>{t('common.loading')}</div>;
-  if (parts.error) return <div className="text-red-400">{t('common.error')}</div>;
+  if (parts.isLoading) return <div className="text-muted">{t('common.loading')}</div>;
+  if (parts.error) return <div className="text-warn">{t('common.error')}</div>;
   const items = parts.data?.items ?? [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold flex-1">{t('parts.title')}</h1>
+    <div className="space-y-8">
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="font-serif text-3xl tracking-tight">{t('parts.title')}</h1>
         <button type="button" className="btn-primary" onClick={() => setShowForm(true)}>
           + {t('parts.new')}
         </button>
       </div>
 
       <input
-        className="input"
+        className="input max-w-md"
         placeholder={t('parts.search')}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
 
       {items.length === 0 ? (
-        <div className="card text-center text-zinc-500">{t('parts.empty')}</div>
+        <p className="text-muted italic font-serif py-8">{t('parts.empty')}</p>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t('parts.fields.name')}</th>
-                <th>{t('parts.fields.partNumber')}</th>
-                <th>{t('parts.fields.manufacturer')}</th>
-                <th>{t('parts.fields.footprint')}</th>
-                <th className="text-right">{t('parts.fields.stock')}</th>
-                <th></th>
+        <table className="table-hairline">
+          <thead>
+            <tr>
+              <th>{t('parts.fields.name')}</th>
+              <th>{t('parts.fields.partNumber')}</th>
+              <th>{t('parts.fields.manufacturer')}</th>
+              <th>{t('parts.fields.footprint')}</th>
+              <th className="text-right pr-2">{t('parts.fields.stock')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((p) => (
+              <tr key={p.id}>
+                <td className="font-medium">{p.name}</td>
+                <td className="font-mono text-xs">{p.partNumber}</td>
+                <td className="text-muted">{p.manufacturer ?? '—'}</td>
+                <td className="font-mono text-xs text-muted">{p.footprint ?? '—'}</td>
+                <td className="text-right tabular text-muted pr-2">—</td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="btn-danger text-xs"
+                    onClick={() => {
+                      if (confirm(`Delete ${p.name}?`)) del.mutate(p.id);
+                    }}
+                  >
+                    {t('parts.delete')}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((p) => (
-                <tr key={p.id}>
-                  <td className="font-medium">{p.name}</td>
-                  <td className="font-mono text-xs">{p.partNumber}</td>
-                  <td>{p.manufacturer ?? '—'}</td>
-                  <td className="font-mono text-xs">{p.footprint ?? '—'}</td>
-                  <td className="text-right">—</td>
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      className="text-red-400 hover:text-red-300 text-xs"
-                      onClick={() => {
-                        if (confirm(`Delete ${p.name}?`)) del.mutate(p.id);
-                      }}
-                    >
-                      {t('parts.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {showForm && (
@@ -120,7 +118,14 @@ function PartForm({
   busy,
   error,
 }: {
-  onSubmit: (data: { name: string; partNumber: string; manufacturer?: string; description?: string; footprint?: string; unit?: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    partNumber: string;
+    manufacturer?: string;
+    description?: string;
+    footprint?: string;
+    unit?: string;
+  }) => void;
   onClose: () => void;
   busy: boolean;
   error: string | null;
@@ -134,52 +139,78 @@ function PartForm({
   const [unit, setUnit] = useState('pcs');
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-20">
-      <div className="card w-full max-w-lg space-y-3">
-        <h2 className="font-semibold">{t('parts.new')}</h2>
-        <div>
-          <label className="label">{t('parts.fields.name')} *</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label className="label">{t('parts.fields.partNumber')} *</label>
-          <input className="input font-mono" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} required />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+    <div className="fixed inset-0 bg-paper/95 backdrop-blur-sm flex items-start justify-center p-6 z-20 overflow-y-auto">
+      <div className="max-w-lg w-full pt-8">
+        <h2 className="font-serif text-2xl tracking-tight mb-6">{t('parts.new')}</h2>
+        <form
+          className="space-y-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit({
+              name,
+              partNumber,
+              manufacturer: manufacturer || undefined,
+              description: description || undefined,
+              footprint: footprint || undefined,
+              unit,
+            });
+          }}
+        >
           <div>
-            <label className="label">{t('parts.fields.manufacturer')}</label>
-            <input className="input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
+            <label className="label">{t('parts.fields.name')} *</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           </div>
           <div>
-            <label className="label">{t('parts.fields.footprint')}</label>
-            <input className="input font-mono" value={footprint} onChange={(e) => setFootprint(e.target.value)} />
+            <label className="label">{t('parts.fields.partNumber')} *</label>
+            <input
+              className="input font-mono"
+              value={partNumber}
+              onChange={(e) => setPartNumber(e.target.value)}
+              required
+            />
           </div>
-        </div>
-        <div>
-          <label className="label">{t('parts.fields.description')}</label>
-          <textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">{t('parts.fields.unit')}</label>
-          <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
-            <option value="pcs">pcs</option>
-            <option value="m">m</option>
-            <option value="g">g</option>
-            <option value="m2">m²</option>
-          </select>
-        </div>
-        {error && <div className="text-red-400 text-sm">{error}</div>}
-        <div className="flex gap-2 justify-end">
-          <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={busy || !name || !partNumber}
-            onClick={() => onSubmit({ name, partNumber, manufacturer: manufacturer || undefined, description: description || undefined, footprint: footprint || undefined, unit })}
-          >
-            {busy ? '...' : t('common.save')}
-          </button>
-        </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="label">{t('parts.fields.manufacturer')}</label>
+              <input className="input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('parts.fields.footprint')}</label>
+              <input
+                className="input font-mono"
+                value={footprint}
+                onChange={(e) => setFootprint(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label">{t('parts.fields.description')}</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label">{t('parts.fields.unit')}</label>
+            <select className="input" value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <option value="pcs">pcs</option>
+              <option value="m">m</option>
+              <option value="g">g</option>
+              <option value="m2">m²</option>
+            </select>
+          </div>
+          {error && <div className="text-sm text-warn pt-1">{error}</div>}
+          <div className="pt-3 flex items-center gap-4">
+            <button type="submit" className="btn-primary" disabled={busy || !name || !partNumber}>
+              {busy ? '...' : t('common.save')}
+            </button>
+            <button type="button" className="text-sm text-muted hover:text-ink" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "PartsBox Clone",
-    "tagline": "Quản lý tồn kho linh kiện điện tử",
+    "title": "PartStock",
+    "tagline": null,
     "language": "Ngôn ngữ",
     "logout": "Đăng xuất"
   },
@@ -22,24 +22,25 @@
     "switchToLogin": "Đã có tài khoản? Đăng nhập",
     "errors": {
       "invalid": "Email hoặc mật khẩu không đúng",
-      "weak": "Mật khẩu phải ≥12 ký tự, có chữ thường, chữ hoa, và số",
+      "weak": "Mật khẩu phải ≥8 ký tự, có chữ thường, chữ hoa, và số",
+      "conflict": "Email đã được đăng ký",
       "generic": "Có lỗi xảy ra, thử lại sau"
     }
   },
   "parts": {
     "title": "Tồn kho linh kiện",
     "new": "Thêm linh kiện",
-    "search": "Tìm kiếm (tên / MPN / hãng / mô tả)",
+    "search": "Tìm (tên / MPN / hãng / mô tả)",
     "empty": "Chưa có linh kiện nào",
     "fields": {
       "name": "Tên",
-      "partNumber": "Mã linh kiện (MPN)",
+      "partNumber": "Mã linh kiện",
       "manufacturer": "Hãng",
       "description": "Mô tả",
       "footprint": "Footprint",
       "unit": "Đơn vị",
       "notes": "Ghi chú",
-      "stock": "Tồn kho"
+      "stock": "Tồn"
     },
     "delete": "Xóa",
     "edit": "Sửa",
@@ -48,29 +49,29 @@
   "locations": {
     "title": "Vị trí lưu trữ",
     "new": "Thêm vị trí",
-    "name": "Tên vị trí",
+    "name": "Tên",
     "parent": "Vị trí cha",
     "description": "Mô tả",
-    "none": "(không có)",
+    "none": "(không)",
     "delete": "Xóa"
   },
   "stock": {
-    "title": "Tổng tồn kho",
-    "empty": "Chưa có dữ liệu tồn kho",
+    "title": "Tồn kho",
+    "empty": "Chưa có dữ liệu",
     "threshold": "Ngưỡng cảnh báo",
-    "total": "Tổng cộng",
+    "total": "Tổng",
     "reserved": "Đã đặt",
     "available": "Khả dụng",
     "location": "Vị trí",
     "lot": "Lô",
-    "quantity": "Số lượng"
+    "quantity": "SL"
   },
   "lots": {
     "title": "Lô hàng",
     "new": "Tạo lô",
     "code": "Mã lô",
     "receivedAt": "Ngày nhận",
-    "expiresAt": "Hạn dùng",
+    "expiresAt": "Hạn",
     "notes": "Ghi chú"
   },
   "common": {

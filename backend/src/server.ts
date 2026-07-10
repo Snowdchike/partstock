@@ -53,19 +53,29 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(cors, {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true); // same-origin / curl / server-side fetch
-      // Wildcard support: trailing '*' matches any subdomain
       for (const allowed of cfg.ALLOWED_ORIGINS) {
-        if (allowed === origin) return cb(null, true);
-        if (allowed.endsWith('*')) {
-          // e.g. "https://*.serveousercontent.com" matches "https://x.serveousercontent.com"
-          const prefix = allowed.slice(0, -1);
-          if (origin.startsWith(prefix)) return cb(null, true);
+        // Wildcard support: '*' anywhere in the pattern matches any chars.
+        // e.g. "https://*.serveousercontent.com" matches any subdomain,
+        //      "http://10.*:3001" matches any 10.x.x.x host on port 3001.
+        const starIdx = allowed.indexOf('*');
+        if (starIdx === -1) {
+          if (allowed === origin) return cb(null, true);
+        } else {
+          const prefix = allowed.slice(0, starIdx);
+          const suffix = allowed.slice(starIdx + 1);
+          if (origin.startsWith(prefix) && origin.endsWith(suffix)) {
+            return cb(null, true);
+          }
         }
       }
       return cb(new Error('CORS: origin not allowed'), false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    // Explicit headers so the browser's preflight succeeds for our CSRF header.
+    allowedHeaders: ['Content-Type', 'x-csrf-token'],
+    // Cache preflight for 1 hour to avoid extra round-trips.
+    maxAge: 3600,
   });
 
   await app.register(cookie, { secret: cfg.SESSION_SECRET });

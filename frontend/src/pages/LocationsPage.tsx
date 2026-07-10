@@ -32,51 +32,49 @@ export function LocationsPage() {
   const items = list.data ?? [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold flex-1">{t('locations.title')}</h1>
+    <div className="space-y-8">
+      <div className="flex items-baseline justify-between">
+        <h1 className="font-serif text-3xl tracking-tight">{t('locations.title')}</h1>
         <button type="button" className="btn-primary" onClick={() => setShowForm(true)}>
           + {t('locations.new')}
         </button>
       </div>
 
       {items.length === 0 ? (
-        <div className="card text-center text-zinc-500">{t('locations.title')} — 0</div>
+        <p className="text-muted italic font-serif py-8">{t('locations.title')} — 0</p>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t('locations.name')}</th>
-                <th>{t('locations.parent')}</th>
-                <th>{t('locations.description')}</th>
-                <th></th>
+        <table className="table-hairline">
+          <thead>
+            <tr>
+              <th>{t('locations.name')}</th>
+              <th>{t('locations.parent')}</th>
+              <th>{t('locations.description')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((l) => (
+              <tr key={l.id}>
+                <td className="font-medium">{l.name}</td>
+                <td className="text-muted">
+                  {l.parentId ? items.find((p) => p.id === l.parentId)?.name ?? '—' : '—'}
+                </td>
+                <td className="text-muted">{l.description ?? '—'}</td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="btn-danger text-xs"
+                    onClick={() => {
+                      if (confirm(`Delete ${l.name}?`)) del.mutate(l.id);
+                    }}
+                  >
+                    {t('locations.delete')}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((l) => (
-                <tr key={l.id}>
-                  <td className="font-medium">{l.name}</td>
-                  <td className="text-zinc-400">
-                    {l.parentId ? items.find((p) => p.id === l.parentId)?.name ?? '—' : '—'}
-                  </td>
-                  <td className="text-zinc-400">{l.description ?? '—'}</td>
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      className="text-red-400 hover:text-red-300 text-xs"
-                      onClick={() => {
-                        if (confirm(`Delete ${l.name}?`)) del.mutate(l.id);
-                      }}
-                    >
-                      {t('locations.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {showForm && (
@@ -108,39 +106,44 @@ function LocationForm({
   const [description, setDescription] = useState('');
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-20">
-      <div className="card w-full max-w-md space-y-3">
-        <h2 className="font-semibold">{t('locations.new')}</h2>
-        <div>
-          <label className="label">{t('locations.name')} *</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label className="label">{t('locations.parent')}</label>
-          <select className="input" value={parentId} onChange={(e) => setParentId(e.target.value)}>
-            <option value="">{t('locations.none')}</option>
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">{t('locations.description')}</label>
-          <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div className="flex gap-2 justify-end">
-          <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={busy || !name}
-            onClick={() => onSubmit({ name, parentId: parentId || undefined, description: description || undefined })}
-          >
-            {busy ? '...' : t('common.save')}
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-paper/95 backdrop-blur-sm flex items-start justify-center p-6 z-20">
+      <div className="max-w-md w-full pt-8">
+        <h2 className="font-serif text-2xl tracking-tight mb-6">{t('locations.new')}</h2>
+        <form
+          className="space-y-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit({ name, parentId: parentId || undefined, description: description || undefined });
+          }}
+        >
+          <div>
+            <label className="label">{t('locations.name')} *</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+          </div>
+          <div>
+            <label className="label">{t('locations.parent')}</label>
+            <select className="input" value={parentId} onChange={(e) => setParentId(e.target.value)}>
+              <option value="">{t('locations.none')}</option>
+              {items.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">{t('locations.description')}</label>
+            <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="pt-3 flex items-center gap-4">
+            <button type="submit" className="btn-primary" disabled={busy || !name}>
+              {busy ? '...' : t('common.save')}
+            </button>
+            <button type="button" className="text-sm text-muted hover:text-ink" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

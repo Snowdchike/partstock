@@ -1,9 +1,9 @@
 {
   "app": {
-    "title": "PartsBox Clone",
-    "tagline": "Electronic parts inventory",
+    "title": "PartStock",
+    "tagline": null,
     "language": "Language",
-    "logout": "Logout"
+    "logout": "Sign out"
   },
   "nav": {
     "parts": "Parts",
@@ -22,18 +22,19 @@
     "switchToLogin": "Have an account? Sign in",
     "errors": {
       "invalid": "Wrong email or password",
-      "weak": "Password must be ≥12 chars with lowercase, uppercase, and a digit",
+      "weak": "Password must be ≥8 chars with lowercase, uppercase, and a digit",
+      "conflict": "Email already registered",
       "generic": "Something went wrong"
     }
   },
   "parts": {
-    "title": "Parts inventory",
+    "title": "Inventory",
     "new": "Add part",
-    "search": "Search (name / MPN / manufacturer / description)",
+    "search": "Search (name / MPN / mfr / description)",
     "empty": "No parts yet",
     "fields": {
       "name": "Name",
-      "partNumber": "Part number (MPN)",
+      "partNumber": "Part number",
       "manufacturer": "Manufacturer",
       "description": "Description",
       "footprint": "Footprint",
@@ -46,28 +47,28 @@
     "view": "View"
   },
   "locations": {
-    "title": "Storage locations",
+    "title": "Locations",
     "new": "Add location",
-    "name": "Location name",
-    "parent": "Parent location",
+    "name": "Name",
+    "parent": "Parent",
     "description": "Description",
     "none": "(none)",
     "delete": "Delete"
   },
   "stock": {
-    "title": "Stock summary",
-    "empty": "No stock yet",
-    "threshold": "Low-stock threshold",
+    "title": "Stock",
+    "empty": "No stock data",
+    "threshold": "Low-stock at",
     "total": "Total",
     "reserved": "Reserved",
     "available": "Available",
     "location": "Location",
     "lot": "Lot",
-    "quantity": "Quantity"
+    "quantity": "Qty"
   },
   "lots": {
     "title": "Lots",
-    "new": "Create lot",
+    "new": "New lot",
     "code": "Lot code",
     "receivedAt": "Received",
     "expiresAt": "Expires",

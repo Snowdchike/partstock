@@ -27,15 +27,18 @@ export function LoginPage() {
         '/api/auth/login',
         { email, password },
       );
-      // Seed the ['me'] cache so route guards see us as authed immediately.
       qc.setQueryData(['me'], { user: result.user });
       await qc.invalidateQueries({ queryKey: ['me'] });
       await navigate({ to: '/parts' });
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[auth submit] failed:', e);
       if (e instanceof AppError) {
         if (e.code === 'UNAUTHORIZED') setErr(t('auth.errors.invalid'));
-        else if (e.code === 'VALIDATION_ERROR') setErr(t('auth.errors.weak'));
-        else if (e.code === 'CONFLICT') setErr('Email đã được đăng ký');
+        else if (e.code === 'VALIDATION_ERROR') {
+          const detail = (e.details as Array<{ message?: string }> | undefined)?.[0]?.message;
+          setErr(detail ?? t('auth.errors.weak'));
+        } else if (e.code === 'CONFLICT') setErr(t('auth.errors.conflict'));
         else setErr(e.message);
       } else {
         setErr(t('auth.errors.generic'));
@@ -46,11 +49,17 @@ export function LoginPage() {
   };
 
   return (
-    <div className="max-w-sm mx-auto mt-12 card">
-      <h1 className="text-lg font-semibold mb-4">
+    <div className="max-w-md mx-auto mt-16">
+      <h1 className="font-serif text-4xl tracking-tight mb-1">
         {mode === 'login' ? t('auth.login') : t('auth.register')}
       </h1>
-      <form className="space-y-3" onSubmit={submit}>
+      <p className="text-sm text-muted italic mb-8 font-serif">
+        {mode === 'login'
+          ? 'Quản lý kho linh kiện điện tử.'
+          : 'Tạo tài khoản đầu tiên sẽ là quản trị viên.'}
+      </p>
+
+      <form className="space-y-5" onSubmit={submit}>
         {mode === 'register' && (
           <div>
             <label className="label">{t('auth.name')}</label>
@@ -83,26 +92,27 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={12}
+            minLength={8}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           />
         </div>
-        {err && <div className="text-sm text-red-400">{err}</div>}
-        <button type="submit" className="btn-primary w-full" disabled={busy}>
-          {busy ? '...' : t('auth.submit')}
-        </button>
+        {err && <div className="text-sm text-warn pt-1">{err}</div>}
+        <div className="pt-3 flex items-center gap-4">
+          <button type="submit" className="btn-primary" disabled={busy}>
+            {busy ? '...' : t('auth.submit')}
+          </button>
+          <button
+            type="button"
+            className="text-sm text-muted hover:text-ink transition"
+            onClick={() => {
+              setErr(null);
+              setMode(mode === 'login' ? 'register' : 'login');
+            }}
+          >
+            {mode === 'login' ? t('auth.switchToRegister') : t('auth.switchToLogin')}
+          </button>
+        </div>
       </form>
-      <div className="mt-4 text-center text-sm">
-        {mode === 'login' ? (
-          <button type="button" className="text-accent hover:underline" onClick={() => setMode('register')}>
-            {t('auth.switchToRegister')}
-          </button>
-        ) : (
-          <button type="button" className="text-accent hover:underline" onClick={() => setMode('login')}>
-            {t('auth.switchToLogin')}
-          </button>
-        )}
-      </div>
     </div>
   );
 }

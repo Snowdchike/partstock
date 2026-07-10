@@ -7,7 +7,13 @@ type StockRow = {
   partId: string;
   part: { id: string; name: string; partNumber: string; unit: string };
   total: number;
-  lots: Array<{ lotId: string | null; lotCode: string | null; locationId: string; locationName: string; quantity: number }>;
+  lots: Array<{
+    lotId: string | null;
+    lotCode: string | null;
+    locationId: string;
+    locationName: string;
+    quantity: number;
+  }>;
 };
 
 export function StockPage() {
@@ -22,15 +28,15 @@ export function StockPage() {
   const rows = stock.data ?? [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold flex-1">{t('stock.title')}</h1>
-        <label className="text-xs text-zinc-400 flex items-center gap-2">
-          {t('stock.threshold')}
+    <div className="space-y-8">
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="font-serif text-3xl tracking-tight">{t('stock.title')}</h1>
+        <label className="text-xs text-muted flex items-baseline gap-2">
+          <span>{t('stock.threshold')}</span>
           <input
             type="number"
             min={0}
-            className="input w-20 py-1"
+            className="input w-20 py-0.5 text-right tabular"
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
           />
@@ -38,44 +44,44 @@ export function StockPage() {
       </div>
 
       {stock.isLoading ? (
-        <div>{t('common.loading')}</div>
+        <div className="text-muted">{t('common.loading')}</div>
       ) : rows.length === 0 ? (
-        <div className="card text-center text-zinc-500">{t('stock.empty')}</div>
+        <p className="text-muted italic font-serif py-8">{t('stock.empty')}</p>
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{t('parts.fields.name')}</th>
-                <th>{t('parts.fields.partNumber')}</th>
-                <th className="text-right">{t('stock.total')}</th>
-                <th>{t('stock.location')} / {t('stock.lot')}</th>
+        <table className="table-hairline">
+          <thead>
+            <tr>
+              <th>{t('parts.fields.name')}</th>
+              <th>{t('parts.fields.partNumber')}</th>
+              <th className="text-right pr-2">{t('stock.total')}</th>
+              <th>
+                {t('stock.location')} / {t('stock.lot')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.partId}>
+                <td className="font-medium">{r.part.name}</td>
+                <td className="font-mono text-xs">{r.part.partNumber}</td>
+                <td className="text-right tabular font-medium pr-2">
+                  {r.total} {r.part.unit}
+                </td>
+                <td>
+                  <div className="space-y-0.5">
+                    {r.lots.map((l, i) => (
+                      <div key={`${l.locationId}-${l.lotId ?? 'none'}-${i}`} className="text-xs">
+                        <span className="text-muted">{l.locationName}</span>
+                        {l.lotCode && <span className="ml-2 text-muted/70">[{l.lotCode}]</span>}
+                        <span className="ml-2 font-mono tabular">{l.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.partId}>
-                  <td className="font-medium">{r.part.name}</td>
-                  <td className="font-mono text-xs">{r.part.partNumber}</td>
-                  <td className="text-right font-semibold">
-                    {r.total} {r.part.unit}
-                  </td>
-                  <td>
-                    <div className="space-y-0.5">
-                      {r.lots.map((l, i) => (
-                        <div key={`${l.locationId}-${l.lotId ?? 'none'}-${i}`} className="text-xs">
-                          <span className="text-zinc-400">{l.locationName}</span>
-                          {l.lotCode && <span className="ml-2 text-zinc-500">[{l.lotCode}]</span>}
-                          <span className="ml-2 font-mono">{l.quantity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );
