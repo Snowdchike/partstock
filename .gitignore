@@ -33,3 +33,6 @@ coverage/
 # Prisma local DB (SQLite) — file lives inside backend/prisma/
 backend/prisma/*.db
 backend/prisma/*.db-journal
+
+# Frontend dist/ is INTENTIONALLY committed so the server works without
+# needing `npm run build` first. To regenerate: cd frontend && npm run build

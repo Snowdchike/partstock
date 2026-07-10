@@ -6,7 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { loadConfig } from './config.js';
 import { disconnectDb } from './db.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
@@ -97,6 +97,21 @@ export async function buildServer(): Promise<FastifyInstance> {
   if (cfg.NODE_ENV === 'production') {
     const here = dirname(fileURLToPath(import.meta.url));
     const distDir = resolve(here, '../../frontend/dist');
+    const indexPath = resolve(distDir, 'index.html');
+
+    // Fail fast with a helpful message instead of cryptic ENOENT on every request.
+    try {
+      await access(indexPath);
+    } catch {
+      throw new Error(
+        `Frontend bundle not found at ${indexPath}.\n` +
+          `Run \`cd frontend && npm run build\` (or \`npm run build -w frontend\` from root) before starting in production.`,
+      );
+    }
+
+    // Cache index.html in memory — SPA fallback would otherwise read the file on every request.
+    const indexHtml = await readFile(indexPath, 'utf8');
+
     // Serve static files only for the /assets prefix (hashed bundles), with long cache.
     await app.register(fastifyStatic, {
       root: distDir,
@@ -107,9 +122,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     });
     // Serve root index.html
     app.get('/', async (_req, reply) => {
-      const indexPath = resolve(distDir, 'index.html');
-      const html = await readFile(indexPath, 'utf8');
-      return reply.type('text/html').send(html);
+      return reply.type('text/html').send(indexHtml);
     });
     // SPA fallback: any non-/api route returns index.html
     app.setNotFoundHandler(async (req, reply) => {
@@ -118,9 +131,7 @@ export async function buildServer(): Promise<FastifyInstance> {
           .status(404)
           .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
       }
-      const indexPath = resolve(distDir, 'index.html');
-      const html = await readFile(indexPath, 'utf8');
-      return reply.type('text/html').send(html);
+      return reply.type('text/html').send(indexHtml);
     });
   }
 
