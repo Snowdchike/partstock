@@ -20,16 +20,21 @@ export function LoginPage() {
     setErr(null);
     setBusy(true);
     try {
-      if (mode === 'register') {
-        await apiPost('/api/auth/register', { email, name, password });
-      }
+      // Register endpoint creates the user AND signs them in (sets the session
+      // cookie). No second login round-trip — that race was causing the blank
+      // page bug after sign-up.
       const result = await apiPost<{ user: { id: string; email: string; name: string; role: string } }>(
-        '/api/auth/login',
-        { email, password },
+        mode === 'register' ? '/api/auth/register' : '/api/auth/login',
+        mode === 'register' ? { email, name, password } : { email, password },
       );
       qc.setQueryData(['me'], { user: result.user });
-      await qc.invalidateQueries({ queryKey: ['me'] });
+      // Navigate FIRST. Invalidate ['me'] only after the route transition so the
+      // browser has had a chance to persist the Set-Cookie. Invalidating
+      // immediately races against the cookie store and the refetch comes back
+      // 401, wiping our seeded cache and triggering the route guard to bounce
+      // us back to /login (the "blank page" bug).
       await navigate({ to: '/parts' });
+      void qc.invalidateQueries({ queryKey: ['me'] });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[auth submit] failed:', e);
@@ -49,17 +54,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-16">
-      <h1 className="font-serif text-4xl tracking-tight mb-1">
+    <div className="max-w-sm mx-auto mt-12 card">
+      <h1 className="text-lg font-semibold mb-4">
         {mode === 'login' ? t('auth.login') : t('auth.register')}
       </h1>
-      <p className="text-sm text-muted italic mb-8 font-serif">
-        {mode === 'login'
-          ? 'Quản lý kho linh kiện điện tử.'
-          : 'Tạo tài khoản đầu tiên sẽ là quản trị viên.'}
-      </p>
-
-      <form className="space-y-5" onSubmit={submit}>
+      <form className="space-y-3" onSubmit={submit}>
         {mode === 'register' && (
           <div>
             <label className="label">{t('auth.name')}</label>
@@ -96,23 +95,22 @@ export function LoginPage() {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           />
         </div>
-        {err && <div className="text-sm text-warn pt-1">{err}</div>}
-        <div className="pt-3 flex items-center gap-4">
-          <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? '...' : t('auth.submit')}
-          </button>
-          <button
-            type="button"
-            className="text-sm text-muted hover:text-ink transition"
-            onClick={() => {
-              setErr(null);
-              setMode(mode === 'login' ? 'register' : 'login');
-            }}
-          >
-            {mode === 'login' ? t('auth.switchToRegister') : t('auth.switchToLogin')}
-          </button>
-        </div>
+        {err && <div className="text-sm text-red-400">{err}</div>}
+        <button type="submit" className="btn-primary w-full" disabled={busy}>
+          {busy ? '...' : t('auth.submit')}
+        </button>
       </form>
+      <div className="mt-4 text-center text-sm">
+        {mode === 'login' ? (
+          <button type="button" className="text-accent hover:underline" onClick={() => setMode('register')}>
+            {t('auth.switchToRegister')}
+          </button>
+        ) : (
+          <button type="button" className="text-accent hover:underline" onClick={() => setMode('login')}>
+            {t('auth.switchToLogin')}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

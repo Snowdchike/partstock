@@ -1,21 +1,31 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { loadConfig } from '../config.js';
 import { fromZodError } from '../lib/errors.js';
 import { SESSION_COOKIE_NAME, destroySession } from '../plugins/auth.js';
-import { LoginSchema, RegisterSchema } from '../schemas/auth.schema.js';
 import * as authService from '../services/auth.service.js';
+import { LoginSchema, RegisterSchema } from '../schemas/auth.schema.js';
 
 const CSRF_COOKIE = 'pbx_csrf';
 
+// Tunnel-style proxies (serveo.net, localhost.run, ngrok, cloudflared) terminate
+// TLS upstream and forward plain HTTP. They MUST set X-Forwarded-Proto: https,
+// otherwise downstream cookie security gets miscomputed.
+function isSecureRequest(req: FastifyRequest): boolean {
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.toLowerCase();
+  if (proto === 'https') return true;
+  if ((req.headers['x-forwarded-ssl'] as string | undefined)?.toLowerCase() === 'on') return true;
+  return req.protocol === 'https';
+}
+
 function setSessionCookie(
-  reply: import('fastify').FastifyReply,
+  req: FastifyRequest,
+  reply: FastifyReply,
   sessionId: string,
   csrfToken: string,
   expiresAt: Date,
 ) {
-  const cfg = loadConfig();
-  const secure = cfg.NODE_ENV === 'production';
+  const secure = isSecureRequest(req);
   reply.setCookie(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
     secure,
@@ -33,16 +43,30 @@ function setSessionCookie(
   });
 }
 
-function clearSessionCookies(reply: import('fastify').FastifyReply) {
+function clearSessionCookies(reply: FastifyReply) {
   reply.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
   reply.clearCookie(CSRF_COOKIE, { path: '/' });
 }
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
+  // Register creates the user AND immediately signs them in (sets session cookie).
+  // This is the standard pattern for sign-up flows and avoids the 2-round-trip
+  // race where the second request can lose the first response's Set-Cookie.
   app.post('/api/auth/register', async (req, reply) => {
     const input = RegisterSchema.parse(req.body);
-    await authService.register(input);
-    return reply.status(201).send({ ok: true });
+    const user = await authService.register(input);
+    // Re-use login flow so password verification, hashing params, and session
+    // creation stay in lockstep.
+    const meta = {
+      userAgent: req.headers['user-agent'] ?? '',
+      ipAddress: req.ip,
+    };
+    const result = await authService.login(
+      { email: input.email, password: input.password },
+      meta,
+    );
+    setSessionCookie(req, reply, result.sessionId, result.csrfToken, result.expiresAt);
+    return reply.status(201).send({ user: result.user });
   });
 
   app.post('/api/auth/login', async (req, reply) => {
@@ -52,7 +76,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       ipAddress: req.ip,
     };
     const result = await authService.login(input, meta);
-    setSessionCookie(reply, result.sessionId, result.csrfToken, result.expiresAt);
+    setSessionCookie(req, reply, result.sessionId, result.csrfToken, result.expiresAt);
     return reply.send({ user: result.user });
   });
 

@@ -3,55 +3,51 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
-  font-feature-settings: 'tnum' 1, 'kern' 1, 'liga' 1;
-}
-
-body {
-  font-feature-settings: 'tnum' 1;
-  text-rendering: optimizeLegibility;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-/* Tabular numerals for stock quantities and counts. */
-.tabular {
-  font-variant-numeric: tabular-nums;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer components {
+  /* Sharp, high-contrast buttons. No rounded corners — feels like a tool,
+     not a SaaS landing page. */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm transition disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-1.5 text-sm font-medium
+      border transition disabled:opacity-40 disabled:cursor-not-allowed
+      tracking-tight;
   }
   .btn-primary {
-    @apply btn bg-ink text-paper hover:bg-ink/85;
+    @apply btn bg-zinc-100 text-zinc-900 border-zinc-100 hover:bg-white hover:border-white;
   }
   .btn-ghost {
-    @apply btn text-ink/70 hover:text-ink hover:bg-card;
+    @apply btn bg-transparent text-zinc-300 border-transparent hover:text-zinc-100 hover:bg-zinc-800/60;
   }
   .btn-danger {
-    @apply btn text-warn hover:bg-warn/10;
+    @apply btn bg-transparent text-red-400 border-transparent hover:text-red-300 hover:bg-red-950/30;
   }
   .input {
-    @apply w-full border-0 border-b border-rule bg-transparent px-1 py-1.5 text-sm text-ink
-      placeholder-muted/60 focus:border-ink focus:outline-none focus:ring-0;
+    @apply w-full bg-surface border border-border px-3 py-2 text-sm text-zinc-100
+      placeholder-zinc-500 focus:border-accent focus:outline-none;
   }
   .label {
-    @apply block text-xs uppercase tracking-wider text-muted mb-1;
+    @apply block text-xs font-medium text-zinc-400 mb-1 tracking-wide uppercase;
   }
-  .rule {
-    @apply border-rule;
+  .card {
+    @apply border border-border bg-surface p-4;
   }
-  /* Hairline table — no rounded corners, no shadows. */
-  .table-hairline {
+  .table-wrap {
+    @apply border border-border overflow-hidden;
+  }
+  .table {
     @apply w-full text-sm;
   }
-  .table-hairline thead th {
-    @apply text-left text-xs uppercase tracking-wider font-medium text-muted py-2 border-b border-ink;
+  .table th {
+    @apply bg-surface text-left text-xs font-medium text-zinc-400 px-3 py-2 border-b border-border tracking-wide uppercase;
   }
-  .table-hairline tbody td {
-    @apply py-2 border-b border-rule align-top;
+  .table td {
+    @apply px-3 py-2 border-b border-border/50;
   }
-  .table-hairline tbody tr:hover td {
-    @apply bg-card/60;
+  .table tbody tr:hover {
+    @apply bg-surface/50;
   }
 }

@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "PartStock",
-    "tagline": null,
+    "title": "Partsbox",
+    "tagline": "Quản lý tồn kho linh kiện điện tử",
     "language": "Ngôn ngữ",
     "logout": "Đăng xuất"
   },
@@ -30,17 +30,17 @@
   "parts": {
     "title": "Tồn kho linh kiện",
     "new": "Thêm linh kiện",
-    "search": "Tìm (tên / MPN / hãng / mô tả)",
+    "search": "Tìm kiếm (tên / MPN / hãng / mô tả)",
     "empty": "Chưa có linh kiện nào",
     "fields": {
       "name": "Tên",
-      "partNumber": "Mã linh kiện",
+      "partNumber": "Mã linh kiện (MPN)",
       "manufacturer": "Hãng",
       "description": "Mô tả",
       "footprint": "Footprint",
       "unit": "Đơn vị",
       "notes": "Ghi chú",
-      "stock": "Tồn"
+      "stock": "Tồn kho"
     },
     "delete": "Xóa",
     "edit": "Sửa",
@@ -49,29 +49,29 @@
   "locations": {
     "title": "Vị trí lưu trữ",
     "new": "Thêm vị trí",
-    "name": "Tên",
+    "name": "Tên vị trí",
     "parent": "Vị trí cha",
     "description": "Mô tả",
-    "none": "(không)",
+    "none": "(không có)",
     "delete": "Xóa"
   },
   "stock": {
-    "title": "Tồn kho",
-    "empty": "Chưa có dữ liệu",
+    "title": "Tổng tồn kho",
+    "empty": "Chưa có dữ liệu tồn kho",
     "threshold": "Ngưỡng cảnh báo",
-    "total": "Tổng",
+    "total": "Tổng cộng",
     "reserved": "Đã đặt",
     "available": "Khả dụng",
     "location": "Vị trí",
     "lot": "Lô",
-    "quantity": "SL"
+    "quantity": "Số lượng"
   },
   "lots": {
     "title": "Lô hàng",
     "new": "Tạo lô",
     "code": "Mã lô",
     "receivedAt": "Ngày nhận",
-    "expiresAt": "Hạn",
+    "expiresAt": "Hạn dùng",
     "notes": "Ghi chú"
   },
   "common": {

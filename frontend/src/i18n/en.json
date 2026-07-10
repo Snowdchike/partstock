@@ -1,9 +1,9 @@
 {
   "app": {
-    "title": "PartStock",
-    "tagline": null,
+    "title": "Partsbox",
+    "tagline": "Electronic parts inventory",
     "language": "Language",
-    "logout": "Sign out"
+    "logout": "Logout"
   },
   "nav": {
     "parts": "Parts",
@@ -28,13 +28,13 @@
     }
   },
   "parts": {
-    "title": "Inventory",
+    "title": "Parts inventory",
     "new": "Add part",
-    "search": "Search (name / MPN / mfr / description)",
+    "search": "Search (name / MPN / manufacturer / description)",
     "empty": "No parts yet",
     "fields": {
       "name": "Name",
-      "partNumber": "Part number",
+      "partNumber": "Part number (MPN)",
       "manufacturer": "Manufacturer",
       "description": "Description",
       "footprint": "Footprint",
@@ -47,28 +47,28 @@
     "view": "View"
   },
   "locations": {
-    "title": "Locations",
+    "title": "Storage locations",
     "new": "Add location",
-    "name": "Name",
-    "parent": "Parent",
+    "name": "Location name",
+    "parent": "Parent location",
     "description": "Description",
     "none": "(none)",
     "delete": "Delete"
   },
   "stock": {
-    "title": "Stock",
-    "empty": "No stock data",
-    "threshold": "Low-stock at",
+    "title": "Stock summary",
+    "empty": "No stock yet",
+    "threshold": "Low-stock threshold",
     "total": "Total",
     "reserved": "Reserved",
     "available": "Available",
     "location": "Location",
     "lot": "Lot",
-    "quantity": "Qty"
+    "quantity": "Quantity"
   },
   "lots": {
     "title": "Lots",
-    "new": "New lot",
+    "new": "Create lot",
     "code": "Lot code",
     "receivedAt": "Received",
     "expiresAt": "Expires",

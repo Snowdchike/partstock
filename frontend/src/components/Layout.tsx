@@ -27,13 +27,8 @@ export function Layout() {
   });
 
   const logout = async () => {
-    try {
-      await apiPost('/api/auth/logout');
-    } catch {
-      // ignore
-    }
+    await apiPost('/api/auth/logout');
     qc.clear();
-    qc.setQueryData(['me'], null);
     await navigate({ to: '/login' });
   };
 
@@ -42,42 +37,35 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-ink">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-baseline gap-8">
-          <Link to="/" className="font-serif text-2xl tracking-tight">
-            PartStock
+      <header className="border-b border-border bg-surface/60 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
+          <Link to="/" className="font-semibold text-lg">
+            {t('app.title')}
           </Link>
-          <nav className="flex items-baseline gap-6 text-sm">
+          <span className="text-xs text-zinc-500 hidden md:inline">{t('app.tagline')}</span>
+          <nav className="flex items-center gap-1 ml-4">
             {isAuthed && !isLoginPage && (
               <>
                 <NavLink to="/parts" label={t('nav.parts')} active={path.startsWith('/parts')} />
-                <NavLink
-                  to="/locations"
-                  label={t('nav.locations')}
-                  active={path.startsWith('/locations')}
-                />
+                <NavLink to="/locations" label={t('nav.locations')} active={path.startsWith('/locations')} />
                 <NavLink to="/stock" label={t('nav.stock')} active={path.startsWith('/stock')} />
               </>
             )}
           </nav>
-          <div className="ml-auto flex items-baseline gap-4 text-sm">
+          <div className="ml-auto flex items-center gap-2">
             <select
               aria-label={t('app.language')}
-              className="bg-transparent text-xs text-muted border-0 focus:outline-none cursor-pointer"
+              className="input w-auto py-1 text-xs"
               value={i18n.language}
               onChange={(e) => setLang(e.target.value)}
             >
-              <option value="vi">VI</option>
-              <option value="en">EN</option>
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
             </select>
             {isAuthed && (
               <>
-                <span className="text-muted hidden sm:inline">{meQ.data?.user.name}</span>
-                <button
-                  type="button"
-                  className="text-muted hover:text-ink transition"
-                  onClick={logout}
-                >
+                <span className="text-xs text-zinc-400 hidden sm:inline">{meQ.data?.user.name}</span>
+                <button type="button" className="btn-ghost text-xs" onClick={logout}>
                   {t('app.logout')}
                 </button>
               </>
@@ -86,27 +74,23 @@ export function Layout() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
         <Outlet />
       </main>
+
+      <footer className="border-t border-border py-3 text-center text-xs text-zinc-500">
+        MIT · self-hosted · your data, your server
+      </footer>
     </div>
   );
 }
 
-function NavLink({
-  to,
-  label,
-  active,
-}: {
-  to: '/parts' | '/locations' | '/stock';
-  label: string;
-  active: boolean;
-}) {
+function NavLink({ to, label, active }: { to: '/parts' | '/locations' | '/stock'; label: string; active: boolean }) {
   return (
     <Link
       to={to}
-      className={`pb-0.5 border-b-2 transition ${
-        active ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'
+      className={`px-3 py-1.5 rounded-md text-sm transition ${
+        active ? 'bg-accent/15 text-accent' : 'text-zinc-300 hover:bg-surface'
       }`}
     >
       {label}
