@@ -23,13 +23,19 @@ export function LoginPage() {
       if (mode === 'register') {
         await apiPost('/api/auth/register', { email, name, password });
       }
-      await apiPost('/api/auth/login', { email, password });
-      qc.clear();
+      const result = await apiPost<{ user: { id: string; email: string; name: string; role: string } }>(
+        '/api/auth/login',
+        { email, password },
+      );
+      // Seed the ['me'] cache so route guards see us as authed immediately.
+      qc.setQueryData(['me'], { user: result.user });
+      await qc.invalidateQueries({ queryKey: ['me'] });
       await navigate({ to: '/parts' });
     } catch (e) {
       if (e instanceof AppError) {
         if (e.code === 'UNAUTHORIZED') setErr(t('auth.errors.invalid'));
         else if (e.code === 'VALIDATION_ERROR') setErr(t('auth.errors.weak'));
+        else if (e.code === 'CONFLICT') setErr('Email đã được đăng ký');
         else setErr(e.message);
       } else {
         setErr(t('auth.errors.generic'));

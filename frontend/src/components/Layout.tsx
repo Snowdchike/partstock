@@ -27,8 +27,13 @@ export function Layout() {
   });
 
   const logout = async () => {
-    await apiPost('/api/auth/logout');
+    try {
+      await apiPost('/api/auth/logout');
+    } catch {
+      // ignore — server may have already expired the session
+    }
     qc.clear();
+    qc.setQueryData(['me'], null);
     await navigate({ to: '/login' });
   };
 

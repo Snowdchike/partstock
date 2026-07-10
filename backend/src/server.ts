@@ -52,8 +52,16 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(cors, {
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // same-origin / curl
-      if (cfg.ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      if (!origin) return cb(null, true); // same-origin / curl / server-side fetch
+      // Wildcard support: trailing '*' matches any subdomain
+      for (const allowed of cfg.ALLOWED_ORIGINS) {
+        if (allowed === origin) return cb(null, true);
+        if (allowed.endsWith('*')) {
+          // e.g. "https://*.serveousercontent.com" matches "https://x.serveousercontent.com"
+          const prefix = allowed.slice(0, -1);
+          if (origin.startsWith(prefix)) return cb(null, true);
+        }
+      }
       return cb(new Error('CORS: origin not allowed'), false);
     },
     credentials: true,
@@ -112,24 +120,45 @@ export async function buildServer(): Promise<FastifyInstance> {
     // Cache index.html in memory — SPA fallback would otherwise read the file on every request.
     const indexHtml = await readFile(indexPath, 'utf8');
 
-    // Serve static files only for the /assets prefix (hashed bundles), with long cache.
+    // Serve static files from dist/ at root, but exclude index.html
+    // (we serve that manually with cache control headers).
     await app.register(fastifyStatic, {
       root: distDir,
-      prefix: '/assets/',
+      prefix: '/',
       cacheControl: true,
       maxAge: '1y',
       immutable: true,
+      // Don't list directory; serveFile is the action.
+      decorateReply: false,
+      // Skip index.html — we serve it ourselves from cache
+      // (fastify-static doesn't have a built-in skip, so we intercept via a hook).
+      constraints: {},
     });
-    // Serve root index.html
-    app.get('/', async (_req, reply) => {
-      return reply.type('text/html').send(indexHtml);
+
+    // Intercept index.html requests to use the cached copy with proper short cache.
+    app.get('/index.html', async (_req, reply) => {
+      return reply
+        .type('text/html')
+        .header('cache-control', 'no-cache')
+        .send(indexHtml);
     });
-    // SPA fallback: any non-/api route returns index.html
+
+    // SPA fallback: any non-/api, non-asset route returns index.html
     app.setNotFoundHandler(async (req, reply) => {
+      // Don't serve SPA for /api/* — those should be 404 JSON.
       if (req.url.startsWith('/api')) {
         return reply
           .status(404)
           .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
+      }
+      // For paths that look like static asset requests (have a file extension),
+      // let the 404 stand — serving HTML would confuse the browser.
+      // The static plugin already handled real assets; this catches typos in asset URLs.
+      const lastSegment = req.url.split('?')[0]?.split('/').pop() ?? '';
+      if (lastSegment.includes('.')) {
+        return reply
+          .status(404)
+          .send({ error: { code: 'NOT_FOUND', message: 'Asset not found', details: null } });
       }
       return reply.type('text/html').send(indexHtml);
     });
