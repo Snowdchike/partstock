@@ -1,0 +1,288 @@
+// PartsBox clone Prisma schema
+// SQLite for local dev (zero install), PostgreSQL for production.
+// Switch via DATABASE_URL — the same schema works for both.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =============================
+// Identity & access
+// =============================
+
+model User {
+  id            String   @id
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          String   @default("user") // "admin" | "user" | "readonly"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  audits   AuditLog[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id // ULID, also the cookie value (signed)
+  userId    String
+  csrfToken String   // 32-byte token, double-submit cookie pattern
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  lastSeen  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// =============================
+// Catalog: Parts + Storage
+// =============================
+
+model StorageLocation {
+  id          String  @id
+  name        String  @unique
+  parentId    String?
+  description String?
+
+  parent     StorageLocation?  @relation("LocationTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children   StorageLocation[] @relation("LocationTree")
+  stockItems StockItem[]       @relation("StockLocation")
+  buildPicks BuildPick[]       @relation("PickLocation")
+
+  @@index([parentId])
+  @@index([name])
+}
+
+model Part {
+  id           String   @id
+  name         String
+  partNumber   String
+  manufacturer String?
+  description  String?
+  footprint    String?
+  unit         String   @default("pcs") // pcs, m, g, m2, ...
+  customFields String   @default("{}") // JSON blob, validated by per-part schema
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lots       Lot[]
+  stockItems StockItem[]
+  bomLines   BomLine[]
+  buildPicks BuildPick[]
+  poLines    PoLine[]
+  labels     Label[]
+
+  @@unique([manufacturer, partNumber])
+  @@index([name])
+  @@index([partNumber])
+  @@index([manufacturer])
+}
+
+model Lot {
+  id         String   @id
+  partId     String
+  code       String   // e.g. reel/barcode
+  receivedAt DateTime @default(now())
+  expiresAt  DateTime?
+  unitCost   Float    @default(0)
+  currency   String   @default("USD")
+  notes      String?
+
+  part       Part        @relation(fields: [partId], references: [id], onDelete: Cascade)
+  stockItems StockItem[] @relation("LotStock")
+  buildPicks BuildPick[] @relation("LotPick")
+  labels     Label[]     @relation("LotLabel")
+
+  @@unique([partId, code])
+  @@index([code])
+  @@index([partId])
+}
+
+model StockItem {
+  id               String @id
+  partId           String
+  lotId            String?
+  locationId       String
+  quantity         Float  @default(0)
+  reservedQuantity Float  @default(0)
+
+  part     Part            @relation(fields: [partId], references: [id], onDelete: Cascade)
+  lot      Lot?            @relation("LotStock", fields: [lotId], references: [id], onDelete: SetNull)
+  location StorageLocation @relation("StockLocation", fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@index([partId])
+  @@index([lotId])
+  @@index([locationId])
+  @@index([partId, locationId])
+}
+
+// =============================
+// BOMs + Builds
+// =============================
+
+model Bom {
+  id        String   @id
+  name      String
+  version   String   @default("1")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines  BomLine[]
+  builds Build[]
+
+  @@unique([name, version])
+  @@index([name])
+}
+
+model BomLine {
+  id         String  @id
+  bomId      String
+  partId     String
+  quantity   Float
+  designator String? // e.g. "R1,R2,R3"
+
+  bom  Bom  @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  part Part @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@index([bomId])
+  @@index([partId])
+}
+
+model Build {
+  id               String   @id
+  bomId            String
+  name             String
+  status           String   @default("planned") // planned | in_progress | done | cancelled
+  attritionPercent Float    @default(2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  completedAt      DateTime?
+
+  bom    Bom         @relation(fields: [bomId], references: [id], onDelete: Restrict)
+  stages BuildStage[]
+
+  @@index([bomId])
+  @@index([status])
+}
+
+model BuildStage {
+  id       String @id
+  buildId  String
+  name     String
+  sequence Int
+  status   String @default("planned")
+
+  build Build      @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  picks BuildPick[]
+
+  @@index([buildId])
+}
+
+model BuildPick {
+  id                String  @id
+  stageId           String
+  partId            String
+  lotId             String?
+  locationId        String
+  quantityRequested Float
+  quantityPicked    Float   @default(0)
+
+  stage    BuildStage      @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  part     Part            @relation(fields: [partId], references: [id], onDelete: Restrict)
+  lot      Lot?            @relation("LotPick", fields: [lotId], references: [id], onDelete: SetNull)
+  location StorageLocation @relation("PickLocation", fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@index([stageId])
+  @@index([partId])
+}
+
+// =============================
+// Procurement
+// =============================
+
+model PurchaseOrder {
+  id         String    @id
+  supplier   String
+  status     String    @default("draft") // draft | ordered | partially_received | received | cancelled
+  orderedAt  DateTime?
+  expectedAt DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  lines PoLine[]
+
+  @@index([supplier])
+  @@index([status])
+}
+
+model PoLine {
+  id        String @id
+  poId      String
+  partId    String
+  quantity  Float
+  unitPrice Float  @default(0)
+  currency  String @default("USD")
+
+  po   PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  part Part          @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@index([poId])
+  @@index([partId])
+}
+
+// =============================
+// Labels
+// =============================
+
+model Label {
+  id        String   @id
+  partId    String
+  lotId     String?
+  format    String   // "qr" | "code128"
+  payload   String   // raw data encoded
+  svg       String   // pre-rendered SVG markup
+  createdAt DateTime @default(now())
+
+  part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+  lot  Lot? @relation("LotLabel", fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@index([partId])
+  @@index([lotId])
+}
+
+// =============================
+// Audit
+// =============================
+
+model AuditLog {
+  id         String   @id
+  userId     String?
+  action     String   // "part.create", "stock.adjust", ...
+  entityType String
+  entityId   String
+  payload    String   @default("{}")
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
