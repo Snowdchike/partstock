@@ -1,29 +1,33 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
-import { BadRequestError, NotFoundError } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../lib/errors.js';
 import { AdjustStockSchema } from '../schemas/stock.schema.js';
 
 export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
   // Adjust stock for (part, lot?, location). Creates StockItem if absent.
   app.post('/api/stock/adjust', { preHandler: [app.requireAuth] }, async (req, reply) => {
     const input = AdjustStockSchema.parse(req.body);
+    const userId = req.user!.id;
 
-    const part = await db.part.findUnique({ where: { id: input.partId } });
+    const part = await db.part.findFirst({ where: { id: input.partId, ownerId: userId } });
     if (!part) throw new NotFoundError('Part not found');
-    const location = await db.storageLocation.findUnique({ where: { id: input.locationId } });
+    const location = await db.storageLocation.findFirst({
+      where: { id: input.locationId, ownerId: userId },
+    });
     if (!location) throw new NotFoundError('Location not found');
     if (input.lotId) {
-      const lot = await db.lot.findUnique({ where: { id: input.lotId } });
+      const lot = await db.lot.findFirst({
+        where: { id: input.lotId, part: { ownerId: userId } },
+      });
       if (!lot) throw new NotFoundError('Lot not found');
       if (lot.partId !== input.partId) throw new BadRequestError('Lot does not belong to part');
     }
 
-    // biome-ignore lint/style/noNonNullAssertion: requireAuth guarantees req.user is non-null
-    const userId = req.user!.id;
     const result = await db.$transaction(async (tx) => {
       const existing = await tx.stockItem.findFirst({
         where: {
+          ownerId: userId,
           partId: input.partId,
           lotId: input.lotId ?? null,
           locationId: input.locationId,
@@ -45,6 +49,7 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
         : await tx.stockItem.create({
             data: {
               id: newId(),
+              ownerId: userId,
               partId: input.partId,
               lotId: input.lotId ?? null,
               locationId: input.locationId,
@@ -78,13 +83,16 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
     return reply.status(201).send(result);
   });
 
-  // Summary per part: total quantity across lots/locations
+  // Summary per part: total quantity across lots/locations (owner-scoped)
   app.get<{ Params: { partId: string } }>(
     '/api/stock/summary/:partId',
     { preHandler: [app.requireAuth] },
     async (req) => {
+      const ownerId = req.user!.id;
+      const part = await db.part.findFirst({ where: { id: req.params.partId, ownerId } });
+      if (!part) throw new NotFoundError('Part not found');
       const items = await db.stockItem.findMany({
-        where: { partId: req.params.partId },
+        where: { partId: req.params.partId, ownerId },
         include: { location: true, lot: true },
         orderBy: { location: { name: 'asc' } },
       });
@@ -94,11 +102,13 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // List low-stock: parts whose total < threshold (default 0)
+  // List low-stock: parts whose total < threshold (owner-scoped)
   app.get('/api/stock', { preHandler: [app.requireAuth] }, async (req) => {
+    const ownerId = req.user!.id;
     const q = req.query as { threshold?: string };
     const threshold = Number(q.threshold ?? '0');
     const items = await db.stockItem.findMany({
+      where: { ownerId },
       include: { part: true, lot: true, location: true },
       take: 500,
     });
@@ -106,15 +116,9 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
       string,
       {
         partId: string;
-        part: (typeof items)[number]['part'];
+        part: typeof items[number]['part'];
         total: number;
-        lots: Array<{
-          lotId: string | null;
-          lotCode: string | null;
-          locationId: string;
-          locationName: string;
-          quantity: number;
-        }>;
+        lots: Array<{ lotId: string | null; lotCode: string | null; locationId: string; locationName: string; quantity: number }>;
       }
     >();
     for (const it of items) {

@@ -5,7 +5,10 @@ import { AppError, UnauthorizedError, fromZodError } from '../lib/errors.js';
 
 // Generic error envelope. Never leaks stack traces.
 // Log full detail server-side, return sanitized JSON to client.
-export async function registerErrorHandler(app: FastifyInstance): Promise<void> {
+export async function registerErrorHandler(
+  app: FastifyInstance,
+  opts: { setNotFound?: boolean } = {},
+): Promise<void> {
   app.setErrorHandler((err, req: FastifyRequest, reply: FastifyReply) => {
     // App-thrown errors (known shape)
     if (err instanceof AppError) {
@@ -74,11 +77,13 @@ export async function registerErrorHandler(app: FastifyInstance): Promise<void> 
   });
 
   // 404 handler
-  app.setNotFoundHandler((_req, reply) => {
-    return reply
-      .status(404)
-      .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
-  });
+  if (opts.setNotFound !== false) {
+    app.setNotFoundHandler((_req, reply) => {
+      return reply
+        .status(404)
+        .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
+    });
+  }
 
   // Type-augment FastifyRequest so route handlers can use req.session without casts
   app.decorateRequest('user', null);

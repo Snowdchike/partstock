@@ -1,14 +1,23 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
-import { ConflictError, NotFoundError } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
+import { ConflictError, ForbiddenError, NotFoundError } from '../lib/errors.js';
 import { CreateLotSchema } from '../schemas/lot.schema.js';
 
 export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/lots', { preHandler: [app.requireAuth] }, async (req) => {
+    const ownerId = req.user!.id;
     const partId = (req.query as Record<string, string>).partId;
+    // If partId given, verify ownership
+    if (partId) {
+      const part = await db.part.findFirst({ where: { id: partId, ownerId }, select: { id: true } });
+      if (!part) return [];
+    }
     return db.lot.findMany({
-      where: partId ? { partId } : {},
+      where: {
+        ...(partId ? { partId } : {}),
+        part: { ownerId },
+      },
       include: { part: { select: { name: true, partNumber: true } } },
       orderBy: { receivedAt: 'desc' },
     });
@@ -16,7 +25,8 @@ export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/api/lots', { preHandler: [app.requireAuth] }, async (req, reply) => {
     const input = CreateLotSchema.parse(req.body);
-    const part = await db.part.findUnique({ where: { id: input.partId } });
+    const ownerId = req.user!.id;
+    const part = await db.part.findFirst({ where: { id: input.partId, ownerId } });
     if (!part) throw new NotFoundError('Part not found');
     try {
       const lot = await db.lot.create({
@@ -26,8 +36,6 @@ export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
           code: input.code,
           receivedAt: input.receivedAt ?? new Date(),
           expiresAt: input.expiresAt ?? null,
-          unitCost: input.unitCost,
-          currency: input.currency,
           notes: input.notes ?? null,
         },
       });
@@ -44,9 +52,13 @@ export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
     '/api/lots/:id',
     { preHandler: [app.requireAuth] },
     async (req, reply) => {
-      await db.lot.delete({ where: { id: req.params.id } }).catch(() => {
-        throw new NotFoundError('Lot not found');
+      const ownerId = req.user!.id;
+      const lot = await db.lot.findFirst({
+        where: { id: req.params.id },
+        include: { part: { select: { ownerId: true } } },
       });
+      if (!lot || lot.part.ownerId !== ownerId) throw new ForbiddenError('Access denied');
+      await db.lot.delete({ where: { id: req.params.id } });
       return reply.status(204).send();
     },
   );

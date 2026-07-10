@@ -3,117 +3,107 @@
 Open-source self-hosted electronic parts inventory, BOM, and build manager.
 Inspired by [PartsBox](https://partsbox.com/) — built for a single workshop or small team that wants full control of their data.
 
-## Status
+## Features (current MVP)
 
-**MVP Phase 1 — Foundation (done this session):**
-- Authentication (register/login/logout/session) with argon2id + secure cookies
-- CSRF protection on all mutating requests
-- Parts CRUD + search
-- Storage Locations (tree, cycle-detected)
-- Lots (per-part, unique code)
-- Stock adjustments (per part/lot/location) with audit log
-- Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
-- Rate limiting
-- Generic JSON error envelope, no stack-trace leakage
-- 9 passing integration tests (auth, parts, locations, lots, stock, CSRF, cycles)
-- SQLite for dev (zero install), PostgreSQL for production (same schema)
+- **Authentication** — argon2id + secure cookies, first registered user is admin
+- **Multi-user, isolated data** — each user sees only their own parts/locations/stock/lots
+- **Parts inventory** — CRUD, search by name/MPN/manufacturer/description
+- **Storage locations** — tree structure with cycle detection
+- **Lots** — per-part unique codes (e.g. reel/barcode)
+- **Stock** — adjust per part/lot/location, with low-stock report
+- **Audit log** — every state change recorded with user + IP
+- **i18n** — Vietnamese (default) + English
+- **Security** — CSP, HSTS, CSRF double-submit, rate limiting, no stack-trace leakage, body size cap, generic JSON errors
+- **Single binary deploy** — Node serves API + built frontend, SQLite for dev, PostgreSQL for prod (same schema)
 
-**Phase 2 — next session:** BOMs + CSV import + pricing; Builds (single/multi-stage with attrition); Purchase Orders; Labels (QR + barcode).
+## Stack
 
-**Phase 3 — frontend:** React + Vite + TanStack Router + Tailwind UI.
-
-**Phase 4 — polish:** i18n (vi/en), Playwright E2E, perf pass, security audit.
-
-Full plan: `docs/superpowers/plans/2026-07-10-partsbox-clone.md`
+- **Backend:** Node 20, Fastify, Prisma, Zod, argon2
+- **Frontend:** React 18, Vite, TanStack Router + Query, Tailwind, i18next
+- **DB:** SQLite (dev, zero install) / PostgreSQL (prod, same Prisma schema)
+- **Tests:** Vitest
 
 ## Quick start (development)
 
 ```bash
-# Clone & install
-git clone <this-repo> partsbox-clone
+git clone <repo> partsbox-clone
 cd partsbox-clone
 npm install
 
-# Generate Prisma client + create SQLite DB
+# Backend DB
 cd backend
-npx prisma generate
-DATABASE_URL="file:./prisma/dev.db" npx prisma db push
-
-# Generate a session secret
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-
-# Run dev server
-SESSION_SECRET=<paste> DATABASE_URL="file:./prisma/dev.db" \
-  npx tsx src/server.ts
+DATABASE_URL="file:./dev.db" npx prisma db push
+SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))")" \
+  DATABASE_URL="file:./dev.db" npx tsx src/server.ts
 # → http://127.0.0.1:3001/api/health
 ```
 
-## Environment variables
-
-See `.env.example`. Required:
-
-- `SESSION_SECRET` — 32+ bytes, base64url-safe. Generate as above.
-- `DATABASE_URL` — `file:./prisma/dev.db` (SQLite) or `postgresql://...` (production).
-
-Optional with sane defaults: `HOST` (127.0.0.1), `PORT` (3001), `ALLOWED_ORIGINS` (csv), `LOG_LEVEL`, `RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`, `SESSION_TTL_DAYS`.
-
-## Production (PostgreSQL)
-
-Same schema, switch `DATABASE_URL` and run migrations:
+In another terminal, run the frontend dev server (proxies /api to backend):
 
 ```bash
-cd backend
-DATABASE_URL=postgresql://user:pass@host/db npx prisma migrate deploy
-DATABASE_URL=... SESSION_SECRET=... npm start
+cd frontend
+npm run dev
+# → http://127.0.0.1:5173
 ```
+
+## Quick start (production — single port)
+
+```bash
+# Build frontend
+cd frontend && npm run build && cd ..
+
+# Run backend in production mode (also serves built frontend)
+cd backend
+NODE_ENV=production SESSION_SECRET=... DATABASE_URL="file:./dev.db" npx tsx src/server.ts
+# → http://127.0.0.1:3001 (UI + API on same port)
+```
+
+For PostgreSQL: set `DATABASE_URL=postgresql://...` and run `npx prisma db push`.
 
 ## API
 
-All `/api/*` (except `/api/health`, `/api/auth/register`, `/api/auth/login`) require an active session cookie.
-Mutating endpoints additionally require the `x-csrf-token` header (echo of `pbx_csrf` cookie).
+All `/api/*` (except `/api/health`, `/api/auth/register`, `/api/auth/login`) require session cookie.
+Mutating endpoints require `x-csrf-token` header matching the `pbx_csrf` cookie.
 
-| Method | Path                              | Notes                            |
-|--------|-----------------------------------|----------------------------------|
-| GET    | `/api/health`                     | public                           |
-| POST   | `/api/auth/register`              | public; first user becomes admin |
-| POST   | `/api/auth/login`                 | public; sets cookies             |
-| POST   | `/api/auth/logout`                | auth+CSRF                        |
-| GET    | `/api/auth/me`                    | auth                             |
-| GET    | `/api/parts?q=&limit=&offset=`    | auth; paginated                  |
-| GET    | `/api/parts/:id`                  | auth                             |
-| POST   | `/api/parts`                      | auth+CSRF                        |
-| PATCH  | `/api/parts/:id`                  | auth+CSRF                        |
-| DELETE | `/api/parts/:id`                  | auth+CSRF                        |
-| GET    | `/api/locations`                  | auth                             |
-| POST   | `/api/locations`                  | auth+CSRF                        |
-| PATCH  | `/api/locations/:id`              | auth+CSRF; rejects cycles        |
-| DELETE | `/api/locations/:id`              | auth+CSRF                        |
-| GET    | `/api/lots?partId=`               | auth                             |
-| POST   | `/api/lots`                       | auth+CSRF                        |
-| DELETE | `/api/lots/:id`                   | auth+CSRF                        |
-| POST   | `/api/stock/adjust`               | auth+CSRF; writes audit log      |
-| GET    | `/api/stock/summary/:partId`      | auth                             |
-| GET    | `/api/stock?threshold=`           | auth; low-stock report           |
+| Method | Path | Auth+CSRF |
+|--------|------|-----------|
+| GET    | `/api/health` | – |
+| POST   | `/api/auth/register` | – |
+| POST   | `/api/auth/login` | – |
+| POST   | `/api/auth/logout` | ✓ |
+| GET    | `/api/auth/me` | auth |
+| GET    | `/api/parts?q=&limit=&offset=` | auth |
+| GET    | `/api/parts/:id` | auth |
+| POST   | `/api/parts` | ✓ |
+| PATCH  | `/api/parts/:id` | ✓ |
+| DELETE | `/api/parts/:id` | ✓ |
+| GET    | `/api/locations` | auth |
+| POST   | `/api/locations` | ✓ |
+| PATCH  | `/api/locations/:id` | ✓ |
+| DELETE | `/api/locations/:id` | ✓ |
+| GET    | `/api/lots?partId=` | auth |
+| POST   | `/api/lots` | ✓ |
+| DELETE | `/api/lots/:id` | ✓ |
+| POST   | `/api/stock/adjust` | ✓ |
+| GET    | `/api/stock/summary/:partId` | auth |
+| GET    | `/api/stock?threshold=` | auth |
+
+## Security baseline
+
+- argon2id (19 MiB, 2 t-cost), min 12-char password with mixed case + digit
+- HttpOnly + sameSite=strict session cookies
+- CSRF double-submit, constant-time compare
+- CSP `default-src 'none'`, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- Rate limit 100/15min general, 5/15min on auth
+- All inputs validated at boundary with Zod; parameterized queries via Prisma
+- Errors return generic JSON envelope; stack traces only server-side
 
 ## Tests
 
 ```bash
-cd backend
-npm test
-# → 9 tests pass
+cd backend && npm test
+# → 9 tests pass (auth, parts, locations, lots, stock, CSRF, ownership)
 ```
-
-## Security baseline
-
-- Passwords: argon2id, 19 MiB memory cost
-- Sessions: httpOnly, sameSite=strict, signed via HMAC
-- CSRF: double-submit cookie, constant-time compare
-- Rate limit: 100 req/15min general, 5/15min on auth (overridable)
-- Body size limit: 256 KiB
-- All input validated at boundary with Zod
-- All DB queries parameterized via Prisma
-- Errors return generic JSON; no stack traces
-- Security headers via helmet
 
 ## License
 

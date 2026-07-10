@@ -31,9 +31,9 @@ model User {
 }
 
 model Session {
-  id        String   @id // ULID, also the cookie value (signed)
+  id        String   @id // ULID, also the cookie value
   userId    String
-  csrfToken String   // 32-byte token, double-submit cookie pattern
+  csrfToken String   // double-submit cookie pattern
   userAgent String?
   ipAddress String?
   createdAt DateTime @default(now())
@@ -52,7 +52,8 @@ model Session {
 
 model StorageLocation {
   id          String  @id
-  name        String  @unique
+  ownerId     String
+  name        String
   parentId    String?
   description String?
 
@@ -61,12 +62,14 @@ model StorageLocation {
   stockItems StockItem[]       @relation("StockLocation")
   buildPicks BuildPick[]       @relation("PickLocation")
 
+  @@index([ownerId])
   @@index([parentId])
-  @@index([name])
+  @@index([ownerId, name])
 }
 
 model Part {
   id           String   @id
+  ownerId      String
   name         String
   partNumber   String
   manufacturer String?
@@ -82,13 +85,13 @@ model Part {
   stockItems StockItem[]
   bomLines   BomLine[]
   buildPicks BuildPick[]
-  poLines    PoLine[]
   labels     Label[]
 
-  @@unique([manufacturer, partNumber])
-  @@index([name])
-  @@index([partNumber])
-  @@index([manufacturer])
+  @@unique([ownerId, manufacturer, partNumber])
+  @@index([ownerId])
+  @@index([ownerId, name])
+  @@index([ownerId, partNumber])
+  @@index([ownerId, manufacturer])
 }
 
 model Lot {
@@ -97,8 +100,6 @@ model Lot {
   code       String   // e.g. reel/barcode
   receivedAt DateTime @default(now())
   expiresAt  DateTime?
-  unitCost   Float    @default(0)
-  currency   String   @default("USD")
   notes      String?
 
   part       Part        @relation(fields: [partId], references: [id], onDelete: Cascade)
@@ -113,6 +114,7 @@ model Lot {
 
 model StockItem {
   id               String @id
+  ownerId          String
   partId           String
   lotId            String?
   locationId       String
@@ -123,9 +125,11 @@ model StockItem {
   lot      Lot?            @relation("LotStock", fields: [lotId], references: [id], onDelete: SetNull)
   location StorageLocation @relation("StockLocation", fields: [locationId], references: [id], onDelete: Restrict)
 
+  @@index([ownerId])
   @@index([partId])
   @@index([lotId])
   @@index([locationId])
+  @@index([ownerId, partId])
   @@index([partId, locationId])
 }
 
@@ -135,6 +139,7 @@ model StockItem {
 
 model Bom {
   id        String   @id
+  ownerId   String
   name      String
   version   String   @default("1")
   notes     String?
@@ -144,8 +149,8 @@ model Bom {
   lines  BomLine[]
   builds Build[]
 
-  @@unique([name, version])
-  @@index([name])
+  @@unique([ownerId, name, version])
+  @@index([ownerId])
 }
 
 model BomLine {
@@ -164,6 +169,7 @@ model BomLine {
 
 model Build {
   id               String   @id
+  ownerId          String
   bomId            String
   name             String
   status           String   @default("planned") // planned | in_progress | done | cancelled
@@ -176,6 +182,7 @@ model Build {
   bom    Bom         @relation(fields: [bomId], references: [id], onDelete: Restrict)
   stages BuildStage[]
 
+  @@index([ownerId])
   @@index([bomId])
   @@index([status])
 }
@@ -212,46 +219,12 @@ model BuildPick {
 }
 
 // =============================
-// Procurement
-// =============================
-
-model PurchaseOrder {
-  id         String    @id
-  supplier   String
-  status     String    @default("draft") // draft | ordered | partially_received | received | cancelled
-  orderedAt  DateTime?
-  expectedAt DateTime?
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  lines PoLine[]
-
-  @@index([supplier])
-  @@index([status])
-}
-
-model PoLine {
-  id        String @id
-  poId      String
-  partId    String
-  quantity  Float
-  unitPrice Float  @default(0)
-  currency  String @default("USD")
-
-  po   PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
-  part Part          @relation(fields: [partId], references: [id], onDelete: Restrict)
-
-  @@index([poId])
-  @@index([partId])
-}
-
-// =============================
 // Labels
 // =============================
 
 model Label {
   id        String   @id
+  ownerId   String
   partId    String
   lotId     String?
   format    String   // "qr" | "code128"
@@ -262,6 +235,7 @@ model Label {
   part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
   lot  Lot? @relation("LotLabel", fields: [lotId], references: [id], onDelete: SetNull)
 
+  @@index([ownerId])
   @@index([partId])
   @@index([lotId])
 }

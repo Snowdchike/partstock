@@ -1,0 +1,86 @@
+{
+  "app": {
+    "title": "PartsBox Clone",
+    "tagline": "Electronic parts inventory",
+    "language": "Language",
+    "logout": "Logout"
+  },
+  "nav": {
+    "parts": "Parts",
+    "locations": "Locations",
+    "stock": "Stock",
+    "lots": "Lots"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Display name",
+    "submit": "Submit",
+    "switchToRegister": "No account? Create one",
+    "switchToLogin": "Have an account? Sign in",
+    "errors": {
+      "invalid": "Wrong email or password",
+      "weak": "Password must be ≥12 chars with lowercase, uppercase, and a digit",
+      "generic": "Something went wrong"
+    }
+  },
+  "parts": {
+    "title": "Parts inventory",
+    "new": "Add part",
+    "search": "Search (name / MPN / manufacturer / description)",
+    "empty": "No parts yet",
+    "fields": {
+      "name": "Name",
+      "partNumber": "Part number (MPN)",
+      "manufacturer": "Manufacturer",
+      "description": "Description",
+      "footprint": "Footprint",
+      "unit": "Unit",
+      "notes": "Notes",
+      "stock": "Stock"
+    },
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View"
+  },
+  "locations": {
+    "title": "Storage locations",
+    "new": "Add location",
+    "name": "Location name",
+    "parent": "Parent location",
+    "description": "Description",
+    "none": "(none)",
+    "delete": "Delete"
+  },
+  "stock": {
+    "title": "Stock summary",
+    "empty": "No stock yet",
+    "threshold": "Low-stock threshold",
+    "total": "Total",
+    "reserved": "Reserved",
+    "available": "Available",
+    "location": "Location",
+    "lot": "Lot",
+    "quantity": "Quantity"
+  },
+  "lots": {
+    "title": "Lots",
+    "new": "Create lot",
+    "code": "Lot code",
+    "receivedAt": "Received",
+    "expiresAt": "Expires",
+    "notes": "Notes"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "error": "Error",
+    "close": "Close",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No"
+  }
+}

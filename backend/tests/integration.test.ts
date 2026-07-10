@@ -10,8 +10,6 @@ beforeAll(async () => {
   const tables = [
     'AuditLog',
     'Label',
-    'PoLine',
-    'PurchaseOrder',
     'BuildPick',
     'BuildStage',
     'Build',
@@ -39,8 +37,6 @@ beforeEach(async () => {
   // Truncate between tests to keep state isolated (FK-safe order)
   await db.auditLog.deleteMany();
   await db.label.deleteMany();
-  await db.poLine.deleteMany();
-  await db.purchaseOrder.deleteMany();
   await db.buildPick.deleteMany();
   await db.buildStage.deleteMany();
   await db.build.deleteMany();
@@ -246,7 +242,7 @@ describe('locations + lots + stock', () => {
       method: 'POST',
       url: '/api/lots',
       headers: { cookie: cookies, 'x-csrf-token': csrf },
-      payload: { partId, code: 'REEL-2026-001', unitCost: 0.05 },
+      payload: { partId, code: 'REEL-2026-001' },
     });
     const lotId = (lot.json() as { id: string }).id;
 

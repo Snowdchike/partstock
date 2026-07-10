@@ -1,17 +1,21 @@
+import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
-import Fastify, { type FastifyInstance } from 'fastify';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { loadConfig } from './config.js';
 import { disconnectDb } from './db.js';
+import { registerErrorHandler } from './plugins/error-handler.js';
 import { registerAuthPlugin } from './plugins/auth.js';
 import { registerCsrfPlugin } from './plugins/csrf.js';
-import { registerErrorHandler } from './plugins/error-handler.js';
 import { registerAuthRoutes } from './routes/auth.routes.js';
+import { registerPartRoutes } from './routes/parts.routes.js';
 import { registerLocationRoutes } from './routes/locations.routes.js';
 import { registerLotRoutes } from './routes/lots.routes.js';
-import { registerPartRoutes } from './routes/parts.routes.js';
 import { registerStockRoutes } from './routes/stock.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
@@ -68,7 +72,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // --- Decorators / handlers ---
 
-  registerErrorHandler(app);
+  registerErrorHandler(app, { setNotFound: cfg.NODE_ENV !== 'production' });
   await registerAuthPlugin(app);
   await registerCsrfPlugin(app);
 
@@ -85,6 +89,40 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerLocationRoutes(app);
   await registerLotRoutes(app);
   await registerStockRoutes(app);
+
+  // --- Static frontend (production) ---
+  // In dev, run `npm run dev` in /frontend and it proxies /api to this server.
+  // In production, build the frontend (`npm run build` in /frontend) and the
+  // server serves the resulting dist/ as static assets + SPA fallback.
+  if (cfg.NODE_ENV === 'production') {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const distDir = resolve(here, '../../frontend/dist');
+    // Serve static files only for the /assets prefix (hashed bundles), with long cache.
+    await app.register(fastifyStatic, {
+      root: distDir,
+      prefix: '/assets/',
+      cacheControl: true,
+      maxAge: '1y',
+      immutable: true,
+    });
+    // Serve root index.html
+    app.get('/', async (_req, reply) => {
+      const indexPath = resolve(distDir, 'index.html');
+      const html = await readFile(indexPath, 'utf8');
+      return reply.type('text/html').send(html);
+    });
+    // SPA fallback: any non-/api route returns index.html
+    app.setNotFoundHandler(async (req, reply) => {
+      if (req.url.startsWith('/api')) {
+        return reply
+          .status(404)
+          .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
+      }
+      const indexPath = resolve(distDir, 'index.html');
+      const html = await readFile(indexPath, 'utf8');
+      return reply.type('text/html').send(html);
+    });
+  }
 
   // --- Lifecycle ---
 
