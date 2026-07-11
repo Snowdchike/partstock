@@ -507,3 +507,191 @@ describe('boms CRUD + CSV import', () => {
     expect(imp.statusCode).toBe(400);
   });
 });
+
+describe('builds pick list + stock reserve/consume', () => {
+  it('requires auth', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/builds' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('creates build from BOM, reserves stock, completes and consumes', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    const loc = await app.inject({
+      method: 'POST',
+      url: '/api/locations',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Bin B1' },
+    });
+    const locationId = (loc.json() as { id: string }).id;
+
+    const part = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'MCU', partNumber: 'STM32F103', manufacturer: 'ST' },
+    });
+    const partId = (part.json() as { id: string }).id;
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/stock/adjust',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, locationId, delta: 100, reason: 'seed' },
+    });
+
+    const bom = await app.inject({
+      method: 'POST',
+      url: '/api/boms',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: {
+        name: 'Controller',
+        version: '1',
+        lines: [{ partId, quantity: 1, designator: 'U1' }],
+      },
+    });
+    const bomId = (bom.json() as { id: string }).id;
+
+    // 10 boards * 1 part * (1 + 2% attrition) = 10.2 requested
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/builds',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: {
+        bomId,
+        name: 'Batch #1',
+        quantity: 10,
+        attritionPercent: 2,
+        reserve: true,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const body = created.json() as {
+      build: {
+        id: string;
+        status: string;
+        quantity: number;
+        stages: Array<{
+          picks: Array<{ id: string; quantityRequested: number; quantityPicked: number; locationId: string }>;
+        }>;
+      };
+      shortages: unknown[];
+      reserved: boolean;
+    };
+    expect(body.reserved).toBe(true);
+    expect(body.shortages).toHaveLength(0);
+    expect(body.build.status).toBe('planned');
+    expect(body.build.quantity).toBe(10);
+    const pick = body.build.stages[0]!.picks[0]!;
+    expect(pick.quantityRequested).toBeCloseTo(10.2, 5);
+    expect(pick.locationId).toBe(locationId);
+
+    const summaryReserved = await app.inject({
+      method: 'GET',
+      url: `/api/stock/summary/${partId}`,
+      headers: { cookie: cookies },
+    });
+    const reservedBefore = summaryReserved.json() as { total: number; reserved: number; available: number };
+    expect(reservedBefore.total).toBe(100);
+    expect(reservedBefore.reserved).toBeCloseTo(10.2, 5);
+    expect(reservedBefore.available).toBeCloseTo(89.8, 5);
+
+    const start = await app.inject({
+      method: 'POST',
+      url: `/api/builds/${body.build.id}/start`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+    });
+    expect(start.statusCode).toBe(200);
+    expect((start.json() as { status: string }).status).toBe('in_progress');
+
+    const complete = await app.inject({
+      method: 'POST',
+      url: `/api/builds/${body.build.id}/complete`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+    });
+    expect(complete.statusCode).toBe(200);
+    expect((complete.json() as { status: string }).status).toBe('done');
+
+    const summaryAfter = await app.inject({
+      method: 'GET',
+      url: `/api/stock/summary/${partId}`,
+      headers: { cookie: cookies },
+    });
+    const after = summaryAfter.json() as { total: number; reserved: number; available: number };
+    expect(after.total).toBeCloseTo(89.8, 5);
+    expect(after.reserved).toBeCloseTo(0, 5);
+  });
+
+  it('reports shortage when stock is insufficient and cancel releases reservation', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    const loc = await app.inject({
+      method: 'POST',
+      url: '/api/locations',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Bin C1' },
+    });
+    const locationId = (loc.json() as { id: string }).id;
+
+    const part = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Resistor', partNumber: 'R1K', manufacturer: 'Yageo' },
+    });
+    const partId = (part.json() as { id: string }).id;
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/stock/adjust',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, locationId, delta: 5, reason: 'seed' },
+    });
+
+    const bom = await app.inject({
+      method: 'POST',
+      url: '/api/boms',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: {
+        name: 'Short board',
+        lines: [{ partId, quantity: 2, designator: 'R1,R2' }],
+      },
+    });
+    const bomId = (bom.json() as { id: string }).id;
+
+    // 10 boards * 2 = 20 needed, only 5 in stock
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/builds',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { bomId, name: 'Short batch', quantity: 10, attritionPercent: 0, reserve: true },
+    });
+    expect(created.statusCode).toBe(201);
+    const body = created.json() as {
+      build: { id: string; stages: Array<{ picks: Array<{ quantityRequested: number }> }> };
+      shortages: Array<{ short: number; needed: number; allocated: number }>;
+    };
+    expect(body.shortages.length).toBe(1);
+    expect(body.shortages[0]!.needed).toBe(20);
+    expect(body.shortages[0]!.allocated).toBe(5);
+    expect(body.shortages[0]!.short).toBe(15);
+    expect(body.build.stages[0]!.picks[0]!.quantityRequested).toBe(5);
+
+    const cancel = await app.inject({
+      method: 'POST',
+      url: `/api/builds/${body.build.id}/cancel`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+    });
+    expect(cancel.statusCode).toBe(200);
+    expect((cancel.json() as { status: string }).status).toBe('cancelled');
+
+    const summary = await app.inject({
+      method: 'GET',
+      url: `/api/stock/summary/${partId}`,
+      headers: { cookie: cookies },
+    });
+    const s = summary.json() as { total: number; reserved: number };
+    expect(s.total).toBe(5);
+    expect(s.reserved).toBe(0);
+  });
+});

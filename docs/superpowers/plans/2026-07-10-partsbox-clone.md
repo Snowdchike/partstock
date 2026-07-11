@@ -131,8 +131,8 @@ partsbox-clone/
 - [x] Task 10: Tests passing, server verified
 
 ### Phase 2 — BOMs and Builds (next session)
-- [ ] Task 11: BOMs CRUD + CSV import + pricing
-- [ ] Task 12: Builds (single-stage + multi-stage) with attrition + pick list
+- [x] Task 11: BOMs CRUD + CSV import (pricing intentionally omitted)
+- [x] Task 12: Builds (single-stage) with attrition + pick list + reserve/complete/cancel
 - [ ] Task 13: Purchase Orders + receiving + barcode lookup
 - [ ] Task 14: Labels (QR + barcode SVG) + print page
 

@@ -10,7 +10,8 @@
     "locations": "Locations",
     "stock": "Stock",
     "lots": "Lots",
-    "boms": "BOMs"
+    "boms": "BOMs",
+    "builds": "Builds"
   },
   "auth": {
     "login": "Sign in",
@@ -100,6 +101,33 @@
       "part": "Part",
       "quantity": "Quantity",
       "designator": "Designator"
+    }
+  },
+  "builds": {
+    "title": "Builds",
+    "new": "New build",
+    "empty": "No builds yet",
+    "pick": "Select a build on the left",
+    "picks": "picks",
+    "attrition": "Attrition",
+    "start": "Start",
+    "complete": "Complete (consume stock)",
+    "cancel": "Cancel build",
+    "delete": "Delete",
+    "confirmComplete": "Complete this build and deduct reserved stock?",
+    "confirmCancel": "Cancel and release reserved stock?",
+    "confirmDelete": "Delete this build?",
+    "noPicks": "No picks allocated (no stock available)",
+    "noBoms": "No BOMs yet — create one first",
+    "requested": "Requested",
+    "picked": "Picked",
+    "shortageNotice": "{{count}} part(s) short — pick list only allocated what was available",
+    "createHint": "Creates a pick list from the BOM + stock and reserves stock on create.",
+    "fields": {
+      "bom": "BOM",
+      "name": "Batch name",
+      "quantity": "Board count",
+      "notes": "Notes"
     }
   },
   "common": {

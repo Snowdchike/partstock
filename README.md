@@ -12,6 +12,7 @@ Inspired by [PartsBox](https://partsbox.com/) — built for a single workshop or
 - **Lots** — per-part unique codes (e.g. reel/barcode)
 - **Stock** — adjust per part/lot/location, with low-stock report
 - **BOMs** — multi-line BOM editor, owner-scoped, KiCad-style CSV import (no distributor pricing)
+- **Builds** — create from BOM, attrition, auto pick list from stock, reserve / complete (consume) / cancel (release)
 - **Audit log** — every state change recorded with user + IP
 - **i18n** — Vietnamese (default) + English
 - **Security** — CSP, HSTS, CSRF double-submit, rate limiting, no stack-trace leakage, body size cap, generic JSON errors
@@ -97,6 +98,15 @@ Mutating endpoints require `x-csrf-token` header matching the `pbx_csrf` cookie.
 | PATCH  | `/api/boms/:id/lines/:lineId` | ✓ |
 | DELETE | `/api/boms/:id/lines/:lineId` | ✓ |
 | POST   | `/api/boms/:id/import-csv` | ✓ |
+| GET    | `/api/builds?q=&status=&limit=&offset=` | auth |
+| GET    | `/api/builds/:id` | auth |
+| POST   | `/api/builds` | ✓ |
+| PATCH  | `/api/builds/:id` | ✓ |
+| POST   | `/api/builds/:id/start` | ✓ |
+| POST   | `/api/builds/:id/complete` | ✓ |
+| POST   | `/api/builds/:id/cancel` | ✓ |
+| PATCH  | `/api/builds/:id/picks/:pickId` | ✓ |
+| DELETE | `/api/builds/:id` | ✓ |
 
 ## Security baseline
 
@@ -112,7 +122,7 @@ Mutating endpoints require `x-csrf-token` header matching the `pbx_csrf` cookie.
 
 ```bash
 cd backend && npm test
-# → 15 tests pass (auth, parts, locations, lots, stock, boms, CSV import, CSRF, ownership)
+# → 18 tests pass (auth, parts, locations, lots, stock, boms, builds, CSV import, CSRF, ownership)
 ```
 
 ## License

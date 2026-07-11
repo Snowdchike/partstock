@@ -18,6 +18,7 @@ import { registerLocationRoutes } from './routes/locations.routes.js';
 import { registerLotRoutes } from './routes/lots.routes.js';
 import { registerStockRoutes } from './routes/stock.routes.js';
 import { registerBomRoutes } from './routes/boms.routes.js';
+import { registerBuildRoutes } from './routes/builds.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const cfg = loadConfig();
@@ -109,6 +110,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerLotRoutes(app);
   await registerStockRoutes(app);
   await registerBomRoutes(app);
+  await registerBuildRoutes(app);
 
   // --- Static frontend (production) ---
   // In dev, run `npm run dev` in /frontend and it proxies /api to this server.

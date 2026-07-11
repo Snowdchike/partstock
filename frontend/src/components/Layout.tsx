@@ -50,6 +50,7 @@ export function Layout() {
                 <NavLink to="/locations" label={t('nav.locations')} active={path.startsWith('/locations')} />
                 <NavLink to="/stock" label={t('nav.stock')} active={path.startsWith('/stock')} />
                 <NavLink to="/boms" label={t('nav.boms')} active={path.startsWith('/boms')} />
+                <NavLink to="/builds" label={t('nav.builds')} active={path.startsWith('/builds')} />
               </>
             )}
           </nav>
@@ -91,7 +92,7 @@ function NavLink({
   label,
   active,
 }: {
-  to: '/parts' | '/locations' | '/stock' | '/boms';
+  to: '/parts' | '/locations' | '/stock' | '/boms' | '/builds';
   label: string;
   active: boolean;
 }) {

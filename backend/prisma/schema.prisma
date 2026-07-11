@@ -172,6 +172,7 @@ model Build {
   ownerId          String
   bomId            String
   name             String
+  quantity         Float    @default(1) // number of boards / units to build
   status           String   @default("planned") // planned | in_progress | done | cancelled
   attritionPercent Float    @default(2)
   notes            String?

@@ -10,7 +10,8 @@
     "locations": "Vị trí",
     "stock": "Tồn kho",
     "lots": "Lô",
-    "boms": "BOM"
+    "boms": "BOM",
+    "builds": "Lắp ráp"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -100,6 +101,33 @@
       "part": "Linh kiện",
       "quantity": "Số lượng",
       "designator": "Designator"
+    }
+  },
+  "builds": {
+    "title": "Lắp ráp / Build",
+    "new": "Tạo build",
+    "empty": "Chưa có build nào",
+    "pick": "Chọn một build bên trái",
+    "picks": "pick",
+    "attrition": "Hao hụt",
+    "start": "Bắt đầu",
+    "complete": "Hoàn tất (trừ kho)",
+    "cancel": "Hủy build",
+    "delete": "Xóa",
+    "confirmComplete": "Hoàn tất build và trừ tồn kho đã pick?",
+    "confirmCancel": "Hủy build và nhả stock đã reserve?",
+    "confirmDelete": "Xóa build này?",
+    "noPicks": "Không allocate được pick (thiếu tồn kho)",
+    "noBoms": "Chưa có BOM — tạo BOM trước",
+    "requested": "Cần lấy",
+    "picked": "Đã lấy",
+    "shortageNotice": "Có {{count}} linh kiện thiếu hàng — pick list chỉ allocate phần có sẵn",
+    "createHint": "Hệ thống tự tạo pick list từ BOM + tồn kho, reserve stock ngay khi tạo.",
+    "fields": {
+      "bom": "BOM",
+      "name": "Tên batch",
+      "quantity": "Số board",
+      "notes": "Ghi chú"
     }
   },
   "common": {
