@@ -2,14 +2,15 @@
 node_modules/
 .pnp.*
 
-# Build output
+# Build artifacts (frontend/dist is committed on purpose)
 node_modules/**/dist/
 node_modules/**/build/
+backend/dist/
 .next/
 out/
 *.tsbuildinfo
 
-# Environment
+# Environment / secrets
 .env
 .env.local
 .env.*.local
@@ -20,19 +21,24 @@ out/
 npm-debug.log*
 pnpm-debug.log*
 
-# Editor
+# Editor / OS
 .vscode/
 .idea/
 *.swp
 .DS_Store
+Thumbs.db
 
-# Test
+# Test / coverage
 coverage/
 .vitest/
+backend/node_modules/.vite/
 
-# Prisma local DB (SQLite) — file lives inside backend/prisma/
+# Prisma local DB (never commit real inventory data)
 backend/prisma/*.db
 backend/prisma/*.db-journal
+backend/prisma/*.db-wal
+backend/prisma/*.db-shm
 
-# Frontend dist/ is INTENTIONALLY committed so the server works without
-# needing `npm run build` first. To regenerate: cd frontend && npm run build
+# Misc
+*.tmp
+.cache/

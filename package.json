@@ -1,8 +1,8 @@
 {
-  "name": "partsbox-clone",
+  "name": "partstock",
   "version": "0.1.0",
   "private": true,
-  "description": "Open-source self-hosted electronic parts inventory, BOM, and build manager",
+  "description": "Self-hosted private electronic parts inventory with per-user ownership",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -11,10 +11,12 @@
   ],
   "scripts": {
     "dev": "npm run dev -w backend",
-    "build": "npm run build -w backend && npm run build -w frontend",
+    "build": "npm run build -w frontend",
+    "start:prod": "bash scripts/start-prod.sh",
     "test": "npm test -w backend",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
+    "db:push": "npm run db:generate -w backend && cd backend && DATABASE_URL=${DATABASE_URL:-file:./dev.db} npx prisma db push",
     "db:migrate": "npm run db:migrate -w backend",
     "db:seed": "npm run db:seed -w backend",
     "db:reset": "npm run db:reset -w backend"
