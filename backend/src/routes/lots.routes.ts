@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { newId } from '../lib/ids.js';
-import { ConflictError, ForbiddenError, NotFoundError } from '../lib/errors.js';
+import { ForbiddenError, NotFoundError } from '../lib/errors.js';
 import { CreateLotSchema } from '../schemas/lot.schema.js';
 
 export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
@@ -28,24 +28,18 @@ export async function registerLotRoutes(app: FastifyInstance): Promise<void> {
     const ownerId = req.user!.id;
     const part = await db.part.findFirst({ where: { id: input.partId, ownerId } });
     if (!part) throw new NotFoundError('Part not found');
-    try {
-      const lot = await db.lot.create({
-        data: {
-          id: newId(),
-          partId: input.partId,
-          code: input.code,
-          receivedAt: input.receivedAt ?? new Date(),
-          expiresAt: input.expiresAt ?? null,
-          notes: input.notes ?? null,
-        },
-      });
-      return reply.status(201).send(lot);
-    } catch (e) {
-      if (String(e).includes('UNIQUE')) {
-        throw new ConflictError('Lot code already exists for this part');
-      }
-      throw e;
-    }
+    // Unique (partId, code) conflicts map to 409 via error-handler P2002.
+    const lot = await db.lot.create({
+      data: {
+        id: newId(),
+        partId: input.partId,
+        code: input.code,
+        receivedAt: input.receivedAt ?? new Date(),
+        expiresAt: input.expiresAt ?? null,
+        notes: input.notes ?? null,
+      },
+    });
+    return reply.status(201).send(lot);
   });
 
   app.delete<{ Params: { id: string } }>(

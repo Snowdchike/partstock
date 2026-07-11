@@ -39,16 +39,27 @@ export async function buildServer(): Promise<FastifyInstance> {
   // --- Plugins (order matters) ---
 
   await app.register(helmet, {
-    // Strict CSP for an API: only same-origin by default
+    // SPA + same-origin API. default-src 'none' without connect-src blocks fetch()
+    // (browser inherits connect-src from default-src → black screen after load).
     contentSecurityPolicy: {
-      useDefaults: true,
+      useDefaults: false,
       directives: {
         'default-src': ["'none'"],
-        'frame-ancestors': ["'none'"],
         'base-uri': ["'self'"],
         'form-action': ["'self'"],
+        'frame-ancestors': ["'none'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", 'data:', 'blob:'],
+        'font-src': ["'self'", 'data:'],
+        'connect-src': ["'self'"],
+        'object-src': ["'none'"],
+        'worker-src': ["'self'", 'blob:'],
+        'manifest-src': ["'self'"],
       },
     },
+    // Local HTTP deploy for dad; HSTS + upgrade-insecure-requests break plain http://LAN
+    hsts: false,
     crossOriginEmbedderPolicy: false,
     referrerPolicy: { policy: 'no-referrer' },
   });
@@ -135,48 +146,39 @@ export async function buildServer(): Promise<FastifyInstance> {
 
     // Cache index.html in memory — SPA fallback would otherwise read the file on every request.
     const indexHtml = await readFile(indexPath, 'utf8');
+    const assetsDir = resolve(distDir, 'assets');
 
-    // Serve static files from dist/ at root, but exclude index.html
-    // (we serve that manually with cache control headers).
+    // Only mount hashed bundles under /assets/* so HTML routes stay free.
     await app.register(fastifyStatic, {
-      root: distDir,
-      prefix: '/',
+      root: assetsDir,
+      prefix: '/assets/',
+      decorateReply: false,
       cacheControl: true,
       maxAge: '1y',
       immutable: true,
-      // Don't list directory; serveFile is the action.
-      decorateReply: false,
-      // Skip index.html — we serve it ourselves from cache
-      // (fastify-static doesn't have a built-in skip, so we intercept via a hook).
-      constraints: {},
     });
 
-    // Intercept index.html requests to use the cached copy with proper short cache.
-    app.get('/index.html', async (_req, reply) => {
-      return reply
-        .type('text/html')
-        .header('cache-control', 'no-cache')
-        .send(indexHtml);
-    });
+    const sendHtml = async (
+      _req: unknown,
+      reply: { type: (t: string) => { header: (k: string, v: string) => { send: (b: string) => unknown } } },
+    ) => reply.type('text/html').header('cache-control', 'no-cache').send(indexHtml);
 
-    // SPA fallback: any non-/api, non-asset route returns index.html
+    app.get('/', sendHtml as never);
+    app.get('/index.html', sendHtml as never);
+
     app.setNotFoundHandler(async (req, reply) => {
-      // Don't serve SPA for /api/* — those should be 404 JSON.
       if (req.url.startsWith('/api')) {
         return reply
           .status(404)
           .send({ error: { code: 'NOT_FOUND', message: 'Route not found', details: null } });
       }
-      // For paths that look like static asset requests (have a file extension),
-      // let the 404 stand — serving HTML would confuse the browser.
-      // The static plugin already handled real assets; this catches typos in asset URLs.
       const lastSegment = req.url.split('?')[0]?.split('/').pop() ?? '';
       if (lastSegment.includes('.')) {
         return reply
           .status(404)
           .send({ error: { code: 'NOT_FOUND', message: 'Asset not found', details: null } });
       }
-      return reply.type('text/html').send(indexHtml);
+      return reply.type('text/html').header('cache-control', 'no-cache').send(indexHtml);
     });
   }
 

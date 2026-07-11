@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from '@tanstack/react-router';
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from '../lib/api';
@@ -10,7 +10,7 @@ export function Layout() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const path = useRouterState({ select: (s) => s.location.pathname });
 
   const meQ = useQuery({
     queryKey: ['me'],
@@ -46,7 +46,7 @@ export function Layout() {
           <nav className="flex items-center gap-1 ml-4">
             {isAuthed && !isLoginPage && (
               <>
-                <NavLink to="/parts" label={t('nav.parts')} active={path.startsWith('/parts')} />
+                <NavLink to="/parts" label={t('nav.parts')} active={path === '/' || path.startsWith('/parts')} />
                 <NavLink to="/locations" label={t('nav.locations')} active={path.startsWith('/locations')} />
                 <NavLink to="/stock" label={t('nav.stock')} active={path.startsWith('/stock')} />
                 <NavLink to="/boms" label={t('nav.boms')} active={path.startsWith('/boms')} />
@@ -65,7 +65,7 @@ export function Layout() {
               <option value="vi">Tiếng Việt</option>
               <option value="en">English</option>
             </select>
-            {isAuthed && (
+            {isAuthed && !isLoginPage && (
               <>
                 <span className="text-xs text-zinc-400 hidden sm:inline">{meQ.data?.user.name}</span>
                 <button type="button" className="btn-ghost text-xs" onClick={logout}>
