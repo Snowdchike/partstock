@@ -1,6 +1,6 @@
-# Hướng dẫn chạy PartStock (cho ba / người dùng)
+# Hướng dẫn chạy PartStock
 
-App **self-host**: cài trên máy ba, data nằm trên máy ba. Mỗi tài khoản chỉ thấy data của mình (ownership).
+App **self-host**: cài trên máy mình, data nằm trên máy mình. Mỗi tài khoản chỉ thấy data của mình (ownership).
 
 ## Cần gì
 
@@ -13,7 +13,7 @@ Không cần Docker, PostgreSQL hay cloud nếu dùng SQLite (mặc định).
 ## Cài lần đầu
 
 ```bash
-# 1. Clone (repo private — ba cần được invite GitHub, hoặc Sir clone hộ)
+# 1. Clone (repo private — cần invite GitHub, hoặc clone hộ)
 git clone https://github.com/Snowdchike/partstock.git
 cd partstock
 
@@ -51,7 +51,7 @@ npx tsx src/server.ts
 
 Mở trình duyệt: **http://127.0.0.1:3001**
 
-Lần đầu: **Tạo tài khoản** (user đầu tiên = admin). Đồng nghiệp tự đăng ký account riêng → data tách, không nhìn thấy kho của ba.
+Lần đầu: **Tạo tài khoản** (user đầu tiên = admin). Người khác tự đăng ký account riêng → data tách, không nhìn thấy kho của nhau.
 
 ## Dùng hằng ngày
 
@@ -106,7 +106,7 @@ DATABASE_URL="file:./dev.db" npx prisma db push
 - Không commit file `.env` / `dev.db` lên Git.
 - Mỗi người một account — **đừng share login**.
 
-## Gửi cho Hermes / dev
+## Dev / health
 
 - Repo private: https://github.com/Snowdchike/partstock  
 - Health check: `curl http://127.0.0.1:3001/api/health`  
