@@ -15,6 +15,7 @@ import { LoginPage } from './pages/LoginPage';
 import { PartsPage } from './pages/PartsPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { StockPage } from './pages/StockPage';
+import { BomsPage } from './pages/BomsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,13 +70,29 @@ const stockRoute = createRoute({
   component: StockPage,
 });
 
+const bomsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/boms',
+  beforeLoad: () => {
+    if (!isAuthed()) throw redirect({ to: '/login' });
+  },
+  component: BomsPage,
+});
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, partsRoute, locationsRoute, stockRoute, loginRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  partsRoute,
+  locationsRoute,
+  stockRoute,
+  bomsRoute,
+  loginRoute,
+]);
 
 const router = createRouter({ routeTree, defaultPreload: 'intent' });
 

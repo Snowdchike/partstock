@@ -301,3 +301,209 @@ describe('locations + lots + stock', () => {
     expect((summary.json() as { total: number }).total).toBe(50);
   });
 });
+
+describe('boms CRUD + CSV import', () => {
+  it('requires auth', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/boms' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('creates BOM with lines, updates, deletes, isolates by owner', async () => {
+    const a = await registerAndLogin();
+    const b = await registerAndLogin();
+
+    const partA = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { name: '10k resistor', partNumber: 'RC0603-10K', manufacturer: 'Yageo' },
+    });
+    expect(partA.statusCode).toBe(201);
+    const partId = (partA.json() as { id: string }).id;
+
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/boms',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: {
+        name: 'Widget v1',
+        version: '1.0',
+        notes: 'first rev',
+        lines: [{ partId, quantity: 2, designator: 'R1,R2' }],
+      },
+    });
+    expect(create.statusCode).toBe(201);
+    const bom = create.json() as {
+      id: string;
+      name: string;
+      version: string;
+      lines: Array<{ id: string; partId: string; quantity: number; designator: string | null }>;
+    };
+    expect(bom.name).toBe('Widget v1');
+    expect(bom.lines).toHaveLength(1);
+    expect(bom.lines[0]?.quantity).toBe(2);
+
+    const listA = await app.inject({
+      method: 'GET',
+      url: '/api/boms',
+      headers: { cookie: a.cookies },
+    });
+    expect(listA.statusCode).toBe(200);
+    expect((listA.json() as { items: unknown[] }).items).toHaveLength(1);
+
+    const listB = await app.inject({
+      method: 'GET',
+      url: '/api/boms',
+      headers: { cookie: b.cookies },
+    });
+    expect((listB.json() as { items: unknown[] }).items).toHaveLength(0);
+
+    const cross = await app.inject({
+      method: 'GET',
+      url: `/api/boms/${bom.id}`,
+      headers: { cookie: b.cookies },
+    });
+    expect(cross.statusCode).toBe(404);
+
+    const badPart = await app.inject({
+      method: 'POST',
+      url: `/api/boms/${bom.id}/lines`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { partId: 'not-a-real-part', quantity: 1 },
+    });
+    expect(badPart.statusCode).toBe(404);
+
+    const addLine = await app.inject({
+      method: 'POST',
+      url: `/api/boms/${bom.id}/lines`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { partId, quantity: 1, designator: 'R3' },
+    });
+    expect(addLine.statusCode).toBe(201);
+
+    const got = await app.inject({
+      method: 'GET',
+      url: `/api/boms/${bom.id}`,
+      headers: { cookie: a.cookies },
+    });
+    expect(got.statusCode).toBe(200);
+    expect((got.json() as { lines: unknown[] }).lines).toHaveLength(2);
+
+    const lineId = bom.lines[0]!.id;
+    const patchLine = await app.inject({
+      method: 'PATCH',
+      url: `/api/boms/${bom.id}/lines/${lineId}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { quantity: 4, designator: 'R1,R2,R4,R5' },
+    });
+    expect(patchLine.statusCode).toBe(200);
+    expect((patchLine.json() as { quantity: number }).quantity).toBe(4);
+
+    const delLine = await app.inject({
+      method: 'DELETE',
+      url: `/api/boms/${bom.id}/lines/${lineId}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+    });
+    expect(delLine.statusCode).toBe(204);
+
+    const upd = await app.inject({
+      method: 'PATCH',
+      url: `/api/boms/${bom.id}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { notes: 'rev b' },
+    });
+    expect(upd.statusCode).toBe(200);
+    expect((upd.json() as { notes: string }).notes).toBe('rev b');
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/boms/${bom.id}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+    });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/boms',
+      headers: { cookie: a.cookies },
+    });
+    expect((after.json() as { items: unknown[] }).items).toHaveLength(0);
+  });
+
+  it('imports KiCad-style CSV and creates missing parts when requested', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    const existing = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Existing cap', partNumber: 'CL10B104KB8NNNC', manufacturer: 'Samsung' },
+    });
+    expect(existing.statusCode).toBe(201);
+
+    const bomRes = await app.inject({
+      method: 'POST',
+      url: '/api/boms',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'CSV Board', version: 'A' },
+    });
+    expect(bomRes.statusCode).toBe(201);
+    const bomId = (bomRes.json() as { id: string }).id;
+
+    const csv = [
+      'Reference,Qty,MPN,Manufacturer,Description,Footprint',
+      '"C1,C2",2,CL10B104KB8NNNC,Samsung,100nF X7R,0603',
+      'R1,1,RC0603FR-0710KL,Yageo,10k 1%,0603',
+      'U1,1,STM32F103C8T6,ST,MCU,LQFP48',
+    ].join('\n');
+
+    const imp = await app.inject({
+      method: 'POST',
+      url: `/api/boms/${bomId}/import-csv`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { csv, createMissingParts: true },
+    });
+    expect(imp.statusCode).toBe(200);
+    const body = imp.json() as {
+      lines: Array<{ designator: string | null; quantity: number; part: { partNumber: string } }>;
+      createdParts: number;
+      matchedParts: number;
+    };
+    expect(body.lines).toHaveLength(3);
+    expect(body.createdParts).toBe(2);
+    expect(body.matchedParts).toBe(1);
+
+    const capLine = body.lines.find((l) => l.part.partNumber === 'CL10B104KB8NNNC');
+    expect(capLine?.quantity).toBe(2);
+    expect(capLine?.designator).toBe('C1,C2');
+
+    const parts = await app.inject({
+      method: 'GET',
+      url: '/api/parts?q=STM32',
+      headers: { cookie: cookies },
+    });
+    expect((parts.json() as { items: unknown[] }).items.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects CSV import when createMissingParts is false and MPN missing', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+    const bomRes = await app.inject({
+      method: 'POST',
+      url: '/api/boms',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Strict BOM' },
+    });
+    const bomId = (bomRes.json() as { id: string }).id;
+
+    const imp = await app.inject({
+      method: 'POST',
+      url: `/api/boms/${bomId}/import-csv`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: {
+        csv: 'Reference,Qty,MPN,Manufacturer\nR1,1,NOTEXIST,Acme\n',
+        createMissingParts: false,
+      },
+    });
+    expect(imp.statusCode).toBe(400);
+  });
+});

@@ -11,6 +11,7 @@ Inspired by [PartsBox](https://partsbox.com/) — built for a single workshop or
 - **Storage locations** — tree structure with cycle detection
 - **Lots** — per-part unique codes (e.g. reel/barcode)
 - **Stock** — adjust per part/lot/location, with low-stock report
+- **BOMs** — multi-line BOM editor, owner-scoped, KiCad-style CSV import (no distributor pricing)
 - **Audit log** — every state change recorded with user + IP
 - **i18n** — Vietnamese (default) + English
 - **Security** — CSP, HSTS, CSRF double-submit, rate limiting, no stack-trace leakage, body size cap, generic JSON errors
@@ -87,6 +88,15 @@ Mutating endpoints require `x-csrf-token` header matching the `pbx_csrf` cookie.
 | POST   | `/api/stock/adjust` | ✓ |
 | GET    | `/api/stock/summary/:partId` | auth |
 | GET    | `/api/stock?threshold=` | auth |
+| GET    | `/api/boms?q=&limit=&offset=` | auth |
+| GET    | `/api/boms/:id` | auth |
+| POST   | `/api/boms` | ✓ |
+| PATCH  | `/api/boms/:id` | ✓ |
+| DELETE | `/api/boms/:id` | ✓ |
+| POST   | `/api/boms/:id/lines` | ✓ |
+| PATCH  | `/api/boms/:id/lines/:lineId` | ✓ |
+| DELETE | `/api/boms/:id/lines/:lineId` | ✓ |
+| POST   | `/api/boms/:id/import-csv` | ✓ |
 
 ## Security baseline
 
@@ -102,7 +112,7 @@ Mutating endpoints require `x-csrf-token` header matching the `pbx_csrf` cookie.
 
 ```bash
 cd backend && npm test
-# → 9 tests pass (auth, parts, locations, lots, stock, CSRF, ownership)
+# → 15 tests pass (auth, parts, locations, lots, stock, boms, CSV import, CSRF, ownership)
 ```
 
 ## License

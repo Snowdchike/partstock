@@ -9,7 +9,8 @@
     "parts": "Linh kiện",
     "locations": "Vị trí",
     "stock": "Tồn kho",
-    "lots": "Lô"
+    "lots": "Lô",
+    "boms": "BOM"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -73,6 +74,33 @@
     "receivedAt": "Ngày nhận",
     "expiresAt": "Hạn dùng",
     "notes": "Ghi chú"
+  },
+  "boms": {
+    "title": "BOM / Danh mục linh kiện",
+    "new": "Tạo BOM",
+    "search": "Tìm BOM (tên / phiên bản)",
+    "empty": "Chưa có BOM nào",
+    "pick": "Chọn một BOM bên trái để xem chi tiết",
+    "version": "Phiên bản",
+    "lines": "dòng",
+    "addLine": "Thêm dòng",
+    "importCsv": "Nhập CSV",
+    "import": "Nhập",
+    "importHint": "Header kiểu KiCad: Reference, Qty, MPN, Manufacturer, Description, Footprint. Nhiều ref gộp bằng dấu phẩy trong ngoặc kép.",
+    "createMissingParts": "Tự tạo linh kiện nếu MPN chưa có",
+    "replaceLines": "Xóa hết dòng cũ rồi nhập mới",
+    "delete": "Xóa BOM",
+    "confirmDelete": "Xóa BOM này?",
+    "confirmDeleteLine": "Xóa dòng này?",
+    "noLines": "BOM chưa có dòng nào",
+    "noParts": "Chưa có linh kiện — thêm ở tab Linh kiện trước",
+    "fields": {
+      "name": "Tên BOM",
+      "notes": "Ghi chú",
+      "part": "Linh kiện",
+      "quantity": "Số lượng",
+      "designator": "Designator"
+    }
   },
   "common": {
     "save": "Lưu",

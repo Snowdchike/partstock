@@ -9,7 +9,8 @@
     "parts": "Parts",
     "locations": "Locations",
     "stock": "Stock",
-    "lots": "Lots"
+    "lots": "Lots",
+    "boms": "BOMs"
   },
   "auth": {
     "login": "Sign in",
@@ -73,6 +74,33 @@
     "receivedAt": "Received",
     "expiresAt": "Expires",
     "notes": "Notes"
+  },
+  "boms": {
+    "title": "BOMs",
+    "new": "New BOM",
+    "search": "Search BOMs (name / version)",
+    "empty": "No BOMs yet",
+    "pick": "Select a BOM on the left",
+    "version": "Version",
+    "lines": "lines",
+    "addLine": "Add line",
+    "importCsv": "Import CSV",
+    "import": "Import",
+    "importHint": "KiCad-style header: Reference, Qty, MPN, Manufacturer, Description, Footprint. Multiple refs go in quotes: \"R1,R2\".",
+    "createMissingParts": "Create missing parts from MPN",
+    "replaceLines": "Replace existing lines",
+    "delete": "Delete BOM",
+    "confirmDelete": "Delete this BOM?",
+    "confirmDeleteLine": "Delete this line?",
+    "noLines": "No lines in this BOM",
+    "noParts": "No parts yet — add some under Parts first",
+    "fields": {
+      "name": "BOM name",
+      "notes": "Notes",
+      "part": "Part",
+      "quantity": "Quantity",
+      "designator": "Designator"
+    }
   },
   "common": {
     "save": "Save",
