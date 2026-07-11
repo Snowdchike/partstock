@@ -11,7 +11,8 @@
     "stock": "Tồn kho",
     "lots": "Lô",
     "boms": "BOM",
-    "builds": "Lắp ráp"
+    "builds": "Lắp ráp",
+    "labels": "Nhãn"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -128,6 +129,26 @@
       "name": "Tên batch",
       "quantity": "Số board",
       "notes": "Ghi chú"
+    }
+  },
+  "labels": {
+    "title": "Nhãn in",
+    "new": "Tạo nhãn",
+    "empty": "Chưa có nhãn nào",
+    "hint": "Chọn nhãn (hoặc để trống = in tất cả) rồi bấm In. Mở cửa sổ in của trình duyệt.",
+    "print": "In",
+    "printTitle": "In nhãn",
+    "selectAll": "Chọn hết",
+    "clearSelection": "Bỏ chọn",
+    "delete": "Xóa",
+    "confirmDelete": "Xóa nhãn này?",
+    "noParts": "Chưa có linh kiện",
+    "noLot": "(không gắn lô)",
+    "fields": {
+      "part": "Linh kiện",
+      "lot": "Lô (tuỳ chọn)",
+      "format": "Định dạng",
+      "copies": "Số bản"
     }
   },
   "common": {

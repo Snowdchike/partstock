@@ -134,7 +134,7 @@ partsbox-clone/
 - [x] Task 11: BOMs CRUD + CSV import (pricing intentionally omitted)
 - [x] Task 12: Builds (single-stage) with attrition + pick list + reserve/complete/cancel
 - [ ] Task 13: Purchase Orders + receiving + barcode lookup
-- [ ] Task 14: Labels (QR + barcode SVG) + print page
+- [x] Task 14: Labels (QR + barcode SVG) + print page
 
 ### Phase 3 — Frontend
 - [ ] Task 15: Vite + React + Tailwind setup

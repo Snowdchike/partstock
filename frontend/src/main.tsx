@@ -17,6 +17,7 @@ import { LocationsPage } from './pages/LocationsPage';
 import { StockPage } from './pages/StockPage';
 import { BomsPage } from './pages/BomsPage';
 import { BuildsPage } from './pages/BuildsPage';
+import { LabelsPage } from './pages/LabelsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +90,15 @@ const buildsRoute = createRoute({
   component: BuildsPage,
 });
 
+const labelsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/labels',
+  beforeLoad: () => {
+    if (!isAuthed()) throw redirect({ to: '/login' });
+  },
+  component: LabelsPage,
+});
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -102,6 +112,7 @@ const routeTree = rootRoute.addChildren([
   stockRoute,
   bomsRoute,
   buildsRoute,
+  labelsRoute,
   loginRoute,
 ]);
 

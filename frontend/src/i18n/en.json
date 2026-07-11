@@ -11,7 +11,8 @@
     "stock": "Stock",
     "lots": "Lots",
     "boms": "BOMs",
-    "builds": "Builds"
+    "builds": "Builds",
+    "labels": "Labels"
   },
   "auth": {
     "login": "Sign in",
@@ -128,6 +129,26 @@
       "name": "Batch name",
       "quantity": "Board count",
       "notes": "Notes"
+    }
+  },
+  "labels": {
+    "title": "Labels",
+    "new": "Create label",
+    "empty": "No labels yet",
+    "hint": "Select labels (or none = print all) then Print. Opens the browser print dialog.",
+    "print": "Print",
+    "printTitle": "Print labels",
+    "selectAll": "Select all",
+    "clearSelection": "Clear",
+    "delete": "Delete",
+    "confirmDelete": "Delete this label?",
+    "noParts": "No parts yet",
+    "noLot": "(no lot)",
+    "fields": {
+      "part": "Part",
+      "lot": "Lot (optional)",
+      "format": "Format",
+      "copies": "Copies"
     }
   },
   "common": {

@@ -695,3 +695,80 @@ describe('builds pick list + stock reserve/consume', () => {
     expect(s.reserved).toBe(0);
   });
 });
+
+describe('labels QR + code128', () => {
+  it('requires auth', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/labels' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('creates QR and Code128 labels, lists, deletes', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    const part = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: '10k resistor', partNumber: 'RC0603-10K', manufacturer: 'Yageo' },
+    });
+    const partId = (part.json() as { id: string }).id;
+
+    const lot = await app.inject({
+      method: 'POST',
+      url: '/api/lots',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, code: 'REEL-LBL-1' },
+    });
+    const lotId = (lot.json() as { id: string }).id;
+
+    const qr = await app.inject({
+      method: 'POST',
+      url: '/api/labels',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, lotId, format: 'qr', copies: 2 },
+    });
+    expect(qr.statusCode).toBe(201);
+    const qrBody = qr.json() as {
+      count: number;
+      items: Array<{ id: string; format: string; svg: string; payload: string }>;
+    };
+    expect(qrBody.count).toBe(2);
+    expect(qrBody.items[0]!.format).toBe('qr');
+    expect(qrBody.items[0]!.svg).toContain('<svg');
+    expect(qrBody.items[0]!.payload).toContain('RC0603-10K');
+    expect(qrBody.items[0]!.payload).toContain('REEL-LBL-1');
+
+    const c128 = await app.inject({
+      method: 'POST',
+      url: '/api/labels',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, format: 'code128', copies: 1 },
+    });
+    expect(c128.statusCode).toBe(201);
+    const cBody = c128.json() as { items: Array<{ format: string; svg: string }> };
+    expect(cBody.items[0]!.format).toBe('code128');
+    expect(cBody.items[0]!.svg).toContain('<rect');
+
+    const list = await app.inject({
+      method: 'GET',
+      url: `/api/labels?partId=${partId}`,
+      headers: { cookie: cookies },
+    });
+    expect(list.statusCode).toBe(200);
+    expect((list.json() as { total: number }).total).toBe(3);
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/labels/${qrBody.items[0]!.id}`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+    });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/labels',
+      headers: { cookie: cookies },
+    });
+    expect((after.json() as { total: number }).total).toBe(2);
+  });
+});
