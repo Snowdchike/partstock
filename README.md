@@ -69,7 +69,7 @@ Copy `.env.example` → `backend/.env` if you prefer files over exports.
 
 ## Docs for end users (Vietnamese)
 
-See **[docs/HUONG-DAN-BA.md](docs/HUONG-DAN-BA.md)** — install, run, backup, update.
+See **[docs/HUONG-DAN.md](docs/HUONG-DAN.md)** — install, run, backup, update.
 
 ## Tests
 
