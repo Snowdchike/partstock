@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiDelete, AppError } from '../lib/api';
 
+type Tag = { id: string; name: string; color: string | null };
+type Category = { id: string; name: string; parentId: string | null };
+
 type Part = {
   id: string;
   name: string;
@@ -12,6 +15,9 @@ type Part = {
   footprint: string | null;
   unit: string;
   notes: string | null;
+  categoryId: string | null;
+  category?: { id: string; name: string } | null;
+  tags?: Tag[];
 };
 
 type List = { items: Part[]; total: number };
@@ -28,8 +34,16 @@ export function PartsPage() {
   });
 
   const create = useMutation({
-    mutationFn: (input: Partial<Part> & { name: string; partNumber: string }) =>
-      apiPost<Part>('/api/parts', input),
+    mutationFn: (input: {
+      name: string;
+      partNumber: string;
+      manufacturer?: string;
+      description?: string;
+      footprint?: string;
+      unit?: string;
+      categoryId?: string;
+      tagIds?: string[];
+    }) => apiPost<Part>('/api/parts', input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['parts'] });
       setShowForm(false);
@@ -71,8 +85,9 @@ export function PartsPage() {
                 <th>{t('parts.fields.name')}</th>
                 <th>{t('parts.fields.partNumber')}</th>
                 <th>{t('parts.fields.manufacturer')}</th>
+                <th>{t('parts.fields.category')}</th>
+                <th>{t('parts.fields.tags')}</th>
                 <th>{t('parts.fields.footprint')}</th>
-                <th className="text-right">{t('parts.fields.stock')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -82,8 +97,13 @@ export function PartsPage() {
                   <td className="font-medium">{p.name}</td>
                   <td className="font-mono text-xs">{p.partNumber}</td>
                   <td>{p.manufacturer ?? '—'}</td>
+                  <td className="text-sm text-zinc-400">{p.category?.name ?? '—'}</td>
+                  <td className="text-xs">
+                    {(p.tags ?? []).length === 0
+                      ? '—'
+                      : (p.tags ?? []).map((tg) => tg.name).join(', ')}
+                  </td>
                   <td className="font-mono text-xs">{p.footprint ?? '—'}</td>
-                  <td className="text-right">—</td>
                   <td className="text-right">
                     <button
                       type="button"
@@ -120,7 +140,16 @@ function PartForm({
   busy,
   error,
 }: {
-  onSubmit: (data: { name: string; partNumber: string; manufacturer?: string; description?: string; footprint?: string; unit?: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    partNumber: string;
+    manufacturer?: string;
+    description?: string;
+    footprint?: string;
+    unit?: string;
+    categoryId?: string;
+    tagIds?: string[];
+  }) => void;
   onClose: () => void;
   busy: boolean;
   error: string | null;
@@ -132,10 +161,25 @@ function PartForm({
   const [description, setDescription] = useState('');
   const [footprint, setFootprint] = useState('');
   const [unit, setUnit] = useState('pcs');
+  const [categoryId, setCategoryId] = useState('');
+  const [tagIds, setTagIds] = useState<string[]>([]);
+
+  const cats = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => apiGet<Category[]>('/api/categories'),
+  });
+  const tags = useQuery({
+    queryKey: ['tags'],
+    queryFn: () => apiGet<Tag[]>('/api/tags'),
+  });
+
+  const toggleTag = (id: string) => {
+    setTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-20">
-      <div className="card w-full max-w-lg space-y-3">
+      <div className="card w-full max-w-lg space-y-3 max-h-[90vh] overflow-y-auto">
         <h2 className="font-semibold">{t('parts.new')}</h2>
         <div>
           <label className="label">{t('parts.fields.name')} *</label>
@@ -143,7 +187,12 @@ function PartForm({
         </div>
         <div>
           <label className="label">{t('parts.fields.partNumber')} *</label>
-          <input className="input font-mono" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} required />
+          <input
+            className="input font-mono"
+            value={partNumber}
+            onChange={(e) => setPartNumber(e.target.value)}
+            required
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -153,6 +202,35 @@ function PartForm({
           <div>
             <label className="label">{t('parts.fields.footprint')}</label>
             <input className="input font-mono" value={footprint} onChange={(e) => setFootprint(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <label className="label">{t('parts.fields.category')}</label>
+          <select className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            <option value="">{t('parts.noCategory')}</option>
+            {(cats.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">{t('parts.fields.tags')}</label>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {(tags.data ?? []).length === 0 && (
+              <span className="text-xs text-zinc-500">{t('parts.noTags')}</span>
+            )}
+            {(tags.data ?? []).map((tg) => (
+              <label key={tg.id} className="flex items-center gap-1 text-sm card py-1 px-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={tagIds.includes(tg.id)}
+                  onChange={() => toggleTag(tg.id)}
+                />
+                {tg.name}
+              </label>
+            ))}
           </div>
         </div>
         <div>
@@ -170,12 +248,25 @@ function PartForm({
         </div>
         {error && <div className="text-red-400 text-sm">{error}</div>}
         <div className="flex gap-2 justify-end">
-          <button type="button" className="btn-ghost" onClick={onClose}>{t('common.cancel')}</button>
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
           <button
             type="button"
             className="btn-primary"
             disabled={busy || !name || !partNumber}
-            onClick={() => onSubmit({ name, partNumber, manufacturer: manufacturer || undefined, description: description || undefined, footprint: footprint || undefined, unit })}
+            onClick={() =>
+              onSubmit({
+                name,
+                partNumber,
+                manufacturer: manufacturer || undefined,
+                description: description || undefined,
+                footprint: footprint || undefined,
+                unit,
+                categoryId: categoryId || undefined,
+                tagIds,
+              })
+            }
           >
             {busy ? '...' : t('common.save')}
           </button>

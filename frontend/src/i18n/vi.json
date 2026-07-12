@@ -12,7 +12,8 @@
     "lots": "Lô",
     "boms": "BOM",
     "builds": "Lắp ráp",
-    "labels": "Nhãn"
+    "labels": "Nhãn",
+    "categories": "Danh mục"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -43,8 +44,12 @@
       "footprint": "Footprint",
       "unit": "Đơn vị",
       "notes": "Ghi chú",
-      "stock": "Tồn kho"
+      "stock": "Tồn kho",
+      "category": "Danh mục",
+      "tags": "Thẻ"
     },
+    "noCategory": "(không danh mục)",
+    "noTags": "Chưa có thẻ — tạo ở tab Danh mục",
     "delete": "Xóa",
     "edit": "Sửa",
     "view": "Chi tiết"
@@ -151,6 +156,29 @@
       "copies": "Số bản"
     }
   },
+  "categories": {
+    "title": "Danh mục",
+    "new": "Thêm danh mục",
+    "empty": "Chưa có danh mục",
+    "none": "(gốc)",
+    "confirmDelete": "Xóa danh mục này?",
+    "fields": {
+      "name": "Tên",
+      "parent": "Danh mục cha",
+      "description": "Mô tả",
+      "parts": "Số part"
+    }
+  },
+  "tags": {
+    "title": "Thẻ",
+    "new": "Thêm thẻ",
+    "empty": "Chưa có thẻ",
+    "confirmDelete": "Xóa thẻ này?",
+    "fields": {
+      "name": "Tên",
+      "color": "Màu (hex)"
+    }
+  },
   "common": {
     "save": "Lưu",
     "cancel": "Hủy",
@@ -159,6 +187,7 @@
     "close": "Đóng",
     "confirm": "Xác nhận",
     "yes": "Có",
-    "no": "Không"
+    "no": "Không",
+    "delete": "Xóa"
   }
 }

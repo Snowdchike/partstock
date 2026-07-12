@@ -1,17 +1,47 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import { db } from '../db.js';
 import { newId } from '../lib/ids.js';
-import { ForbiddenError, NotFoundError } from '../lib/errors.js';
+import { BadRequestError, NotFoundError } from '../lib/errors.js';
 import { CreatePartSchema, PartQuerySchema, UpdatePartSchema } from '../schemas/part.schema.js';
 
+const partInclude = {
+  category: { select: { id: true, name: true } },
+  partTags: { include: { tag: { select: { id: true, name: true, color: true } } } },
+} as const;
+
+function shapePart<T extends { partTags?: Array<{ tag: { id: string; name: string; color: string | null } }> }>(
+  part: T,
+) {
+  const { partTags, ...rest } = part;
+  return {
+    ...rest,
+    tags: (partTags ?? []).map((pt) => pt.tag),
+  };
+}
+
+async function assertOwnedCategory(categoryId: string | null | undefined, ownerId: string) {
+  if (!categoryId) return;
+  const cat = await db.category.findFirst({ where: { id: categoryId, ownerId }, select: { id: true } });
+  if (!cat) throw new BadRequestError('Category not found');
+}
+
+async function assertOwnedTags(tagIds: string[], ownerId: string) {
+  if (tagIds.length === 0) return;
+  const tags = await db.tag.findMany({
+    where: { ownerId, id: { in: tagIds } },
+    select: { id: true },
+  });
+  if (tags.length !== tagIds.length) throw new BadRequestError('One or more tags not found');
+}
+
 export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
-  // List + search (scoped to owner)
   app.get('/api/parts', { preHandler: [app.requireAuth] }, async (req) => {
     const q = PartQuerySchema.parse(req.query);
     const ownerId = req.user!.id;
     const where = {
       ownerId,
+      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
+      ...(q.tagId ? { partTags: { some: { tagId: q.tagId } } } : {}),
       ...(q.q
         ? {
             OR: [
@@ -29,13 +59,18 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
         orderBy: { updatedAt: 'desc' },
         take: q.limit,
         skip: q.offset,
+        include: partInclude,
       }),
       db.part.count({ where }),
     ]);
-    return { items, total, limit: q.limit, offset: q.offset };
+    return {
+      items: items.map(shapePart),
+      total,
+      limit: q.limit,
+      offset: q.offset,
+    };
   });
 
-  // Get one (owner-scoped)
   app.get<{ Params: { id: string } }>(
     '/api/parts/:id',
     { preHandler: [app.requireAuth] },
@@ -43,46 +78,65 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
       const ownerId = req.user!.id;
       const part = await db.part.findFirst({
         where: { id: req.params.id, ownerId },
-        include: { lots: true, stockItems: { include: { location: true, lot: true } } },
+        include: {
+          ...partInclude,
+          lots: true,
+          stockItems: { include: { location: true, lot: true } },
+        },
       });
       if (!part) throw new NotFoundError('Part not found');
-      return part;
+      return shapePart(part);
     },
   );
 
-  // Create
   app.post('/api/parts', { preHandler: [app.requireAuth] }, async (req, reply) => {
     const input = CreatePartSchema.parse(req.body);
     const userId = req.user!.id;
-    const part = await db.part.create({
-      data: {
-        id: newId(),
-        ownerId: userId,
-        name: input.name,
-        partNumber: input.partNumber,
-        manufacturer: input.manufacturer ?? null,
-        description: input.description ?? null,
-        footprint: input.footprint ?? null,
-        unit: input.unit,
-        customFields: JSON.stringify(input.customFields),
-        notes: input.notes ?? null,
-      },
+    await assertOwnedCategory(input.categoryId, userId);
+    await assertOwnedTags(input.tagIds, userId);
+
+    const part = await db.$transaction(async (tx) => {
+      const created = await tx.part.create({
+        data: {
+          id: newId(),
+          ownerId: userId,
+          name: input.name,
+          partNumber: input.partNumber,
+          manufacturer: input.manufacturer ?? null,
+          description: input.description ?? null,
+          footprint: input.footprint ?? null,
+          unit: input.unit,
+          customFields: JSON.stringify(input.customFields),
+          notes: input.notes ?? null,
+          categoryId: input.categoryId ?? null,
+          partTags: {
+            create: input.tagIds.map((tagId) => ({ tagId })),
+          },
+        },
+        include: partInclude,
+      });
+      await tx.auditLog.create({
+        data: {
+          id: newId(),
+          userId,
+          action: 'part.create',
+          entityType: 'Part',
+          entityId: created.id,
+          payload: JSON.stringify({
+            name: created.name,
+            partNumber: created.partNumber,
+            categoryId: created.categoryId,
+            tagIds: input.tagIds,
+          }),
+          ipAddress: req.ip,
+        },
+      });
+      return created;
     });
-    await db.auditLog.create({
-      data: {
-        id: newId(),
-        userId,
-        action: 'part.create',
-        entityType: 'Part',
-        entityId: part.id,
-        payload: JSON.stringify({ name: part.name, partNumber: part.partNumber }),
-        ipAddress: req.ip,
-      },
-    });
-    return reply.status(201).send(part);
+
+    return reply.status(201).send(shapePart(part));
   });
 
-  // Update (owner-scoped)
   app.patch<{ Params: { id: string } }>(
     '/api/parts/:id',
     { preHandler: [app.requireAuth] },
@@ -91,28 +145,49 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
       const userId = req.user!.id;
       const existing = await db.part.findFirst({ where: { id: req.params.id, ownerId: userId } });
       if (!existing) throw new NotFoundError('Part not found');
-      const data: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(input)) {
-        if (k === 'customFields' && v !== undefined) data[k] = JSON.stringify(v);
-        else if (v !== undefined) data[k] = v;
-      }
-      const part = await db.part.update({ where: { id: req.params.id }, data });
-      await db.auditLog.create({
-        data: {
-          id: newId(),
-          userId,
-          action: 'part.update',
-          entityType: 'Part',
-          entityId: part.id,
-          payload: JSON.stringify(data),
-          ipAddress: req.ip,
-        },
+
+      if (input.categoryId !== undefined) await assertOwnedCategory(input.categoryId, userId);
+      if (input.tagIds) await assertOwnedTags(input.tagIds, userId);
+
+      const part = await db.$transaction(async (tx) => {
+        const data: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(input)) {
+          if (k === 'tagIds') continue;
+          if (k === 'customFields' && v !== undefined) data[k] = JSON.stringify(v);
+          else if (v !== undefined) data[k] = v;
+        }
+        if (Object.keys(data).length > 0) {
+          await tx.part.update({ where: { id: req.params.id }, data });
+        }
+        if (input.tagIds) {
+          await tx.partTag.deleteMany({ where: { partId: req.params.id } });
+          if (input.tagIds.length > 0) {
+            await tx.partTag.createMany({
+              data: input.tagIds.map((tagId) => ({ partId: req.params.id, tagId })),
+            });
+          }
+        }
+        await tx.auditLog.create({
+          data: {
+            id: newId(),
+            userId,
+            action: 'part.update',
+            entityType: 'Part',
+            entityId: req.params.id,
+            payload: JSON.stringify(input),
+            ipAddress: req.ip,
+          },
+        });
+        return tx.part.findFirstOrThrow({
+          where: { id: req.params.id },
+          include: partInclude,
+        });
       });
-      return part;
+
+      return shapePart(part);
     },
   );
 
-  // Delete (owner-scoped)
   app.delete<{ Params: { id: string } }>(
     '/api/parts/:id',
     { preHandler: [app.requireAuth] },
@@ -136,12 +211,8 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // Cross-tenant access check helper exposed for other routes
   app.decorate('assertOwnsPart', async (partId: string, ownerId: string) => {
     const exists = await db.part.findFirst({ where: { id: partId, ownerId }, select: { id: true } });
-    if (!exists) throw new ForbiddenError('Access denied');
+    if (!exists) throw new NotFoundError('Part not found');
   });
-
-  // silence unused z
-  void z;
 }

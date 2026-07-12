@@ -17,7 +17,10 @@ beforeAll(async () => {
     'Bom',
     'StockItem',
     'Lot',
+    'PartTag',
     'Part',
+    'Tag',
+    'Category',
     'StorageLocation',
     'Session',
     'User',
@@ -44,7 +47,10 @@ beforeEach(async () => {
   await db.bom.deleteMany();
   await db.stockItem.deleteMany();
   await db.lot.deleteMany();
+  await db.partTag.deleteMany();
   await db.part.deleteMany();
+  await db.tag.deleteMany();
+  await db.category.deleteMany();
   await db.storageLocation.deleteMany();
   await db.session.deleteMany();
   await db.user.deleteMany();
@@ -770,5 +776,100 @@ describe('labels QR + code128', () => {
       headers: { cookie: cookies },
     });
     expect((after.json() as { total: number }).total).toBe(2);
+  });
+});
+
+describe('categories + tags', () => {
+  it('creates category tree, tags, assigns to part, isolates by owner', async () => {
+    const a = await registerAndLogin();
+    const b = await registerAndLogin();
+
+    const parent = await app.inject({
+      method: 'POST',
+      url: '/api/categories',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { name: 'Passive' },
+    });
+    expect(parent.statusCode).toBe(201);
+    const parentId = (parent.json() as { id: string }).id;
+
+    const child = await app.inject({
+      method: 'POST',
+      url: '/api/categories',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { name: 'Resistors', parentId },
+    });
+    expect(child.statusCode).toBe(201);
+    const childId = (child.json() as { id: string }).id;
+
+    const cycle = await app.inject({
+      method: 'PATCH',
+      url: `/api/categories/${parentId}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { parentId: childId },
+    });
+    expect(cycle.statusCode).toBe(400);
+
+    const tag = await app.inject({
+      method: 'POST',
+      url: '/api/tags',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { name: 'SMD', color: '3366ff' },
+    });
+    expect(tag.statusCode).toBe(201);
+    const tagBody = tag.json() as { id: string; color: string };
+    expect(tagBody.color).toBe('#3366ff');
+    const tagId = tagBody.id;
+
+    const part = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: {
+        name: '10k',
+        partNumber: 'R10K-CAT',
+        categoryId: childId,
+        tagIds: [tagId],
+      },
+    });
+    expect(part.statusCode).toBe(201);
+    const partBody = part.json() as {
+      id: string;
+      categoryId: string;
+      tags: Array<{ id: string; name: string }>;
+    };
+    expect(partBody.categoryId).toBe(childId);
+    expect(partBody.tags).toHaveLength(1);
+    expect(partBody.tags[0]!.name).toBe('SMD');
+
+    const filtered = await app.inject({
+      method: 'GET',
+      url: `/api/parts?categoryId=${childId}&tagId=${tagId}`,
+      headers: { cookie: a.cookies },
+    });
+    expect(filtered.statusCode).toBe(200);
+    expect((filtered.json() as { items: unknown[] }).items).toHaveLength(1);
+
+    const bCats = await app.inject({
+      method: 'GET',
+      url: '/api/categories',
+      headers: { cookie: b.cookies },
+    });
+    expect((bCats.json() as unknown[]).length).toBe(0);
+
+    const steal = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: b.cookies, 'x-csrf-token': b.csrf },
+      payload: { name: 'X', partNumber: 'X1', categoryId: childId },
+    });
+    expect(steal.statusCode).toBe(400);
+
+    const delParent = await app.inject({
+      method: 'DELETE',
+      url: `/api/categories/${parentId}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+    });
+    expect(delParent.statusCode).toBe(400);
   });
 });

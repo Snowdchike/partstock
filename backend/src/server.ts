@@ -20,6 +20,8 @@ import { registerStockRoutes } from './routes/stock.routes.js';
 import { registerBomRoutes } from './routes/boms.routes.js';
 import { registerBuildRoutes } from './routes/builds.routes.js';
 import { registerLabelRoutes } from './routes/labels.routes.js';
+import { registerCategoryRoutes } from './routes/categories.routes.js';
+import { registerTagRoutes } from './routes/tags.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const cfg = loadConfig();
@@ -118,6 +120,8 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await registerAuthRoutes(app);
   await registerPartRoutes(app);
+  await registerCategoryRoutes(app);
+  await registerTagRoutes(app);
   await registerLocationRoutes(app);
   await registerLotRoutes(app);
   await registerStockRoutes(app);

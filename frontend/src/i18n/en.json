@@ -12,7 +12,8 @@
     "lots": "Lots",
     "boms": "BOMs",
     "builds": "Builds",
-    "labels": "Labels"
+    "labels": "Labels",
+    "categories": "Categories"
   },
   "auth": {
     "login": "Sign in",
@@ -43,8 +44,12 @@
       "footprint": "Footprint",
       "unit": "Unit",
       "notes": "Notes",
-      "stock": "Stock"
+      "stock": "Stock",
+      "category": "Category",
+      "tags": "Tags"
     },
+    "noCategory": "(no category)",
+    "noTags": "No tags yet — create under Categories",
     "delete": "Delete",
     "edit": "Edit",
     "view": "View"
@@ -151,6 +156,29 @@
       "copies": "Copies"
     }
   },
+  "categories": {
+    "title": "Categories",
+    "new": "Add category",
+    "empty": "No categories yet",
+    "none": "(root)",
+    "confirmDelete": "Delete this category?",
+    "fields": {
+      "name": "Name",
+      "parent": "Parent",
+      "description": "Description",
+      "parts": "Parts"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "new": "Add tag",
+    "empty": "No tags yet",
+    "confirmDelete": "Delete this tag?",
+    "fields": {
+      "name": "Name",
+      "color": "Color (hex)"
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -159,6 +187,7 @@
     "close": "Close",
     "confirm": "Confirm",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "delete": "Delete"
   }
 }

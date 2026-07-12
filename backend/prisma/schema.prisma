@@ -67,6 +67,45 @@ model StorageLocation {
   @@index([ownerId, name])
 }
 
+model Category {
+  id          String  @id
+  ownerId     String
+  name        String
+  parentId    String?
+  description String?
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  parts    Part[]
+
+  @@unique([ownerId, name, parentId])
+  @@index([ownerId])
+  @@index([parentId])
+}
+
+model Tag {
+  id      String @id
+  ownerId String
+  name    String
+  color   String?
+
+  partTags PartTag[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model PartTag {
+  partId String
+  tagId  String
+
+  part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([partId, tagId])
+  @@index([tagId])
+}
+
 model Part {
   id           String   @id
   ownerId      String
@@ -78,9 +117,12 @@ model Part {
   unit         String   @default("pcs") // pcs, m, g, m2, ...
   customFields String   @default("{}") // JSON blob, validated by per-part schema
   notes        String?
+  categoryId   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  partTags   PartTag[]
   lots       Lot[]
   stockItems StockItem[]
   bomLines   BomLine[]
@@ -92,6 +134,7 @@ model Part {
   @@index([ownerId, name])
   @@index([ownerId, partNumber])
   @@index([ownerId, manufacturer])
+  @@index([categoryId])
 }
 
 model Lot {
