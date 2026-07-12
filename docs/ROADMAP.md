@@ -28,7 +28,7 @@ Status: `done` | `partial` | `todo` | `later` | `wont`
 | **Attachments** (datasheet PDF, images) | todo | local disk + owner scope |
 | **Part detail page** (rich notes, history) | partial | view/edit + stock + lots UI done; history later |
 | Stock receive UI (+qty at location) | done | adjust form + list-all stock |
-| **CSV/JSON import-export parts+stock** | todo | |
+| CSV import-export parts | done | category/tags auto-create; stock rows later |
 | **Parametric / custom fields UI** | partial | JSON blob; no schema UI |
 | **Manufacturer / footprint as entities** | todo | now free strings |
 | **Barcode on location** | todo | |

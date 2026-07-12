@@ -50,6 +50,11 @@
     },
     "noCategory": "(không danh mục)",
     "noTags": "Chưa có thẻ — tạo ở tab Danh mục",
+    "exportCsv": "Xuất CSV",
+    "importCsv": "Nhập CSV",
+    "import": "Nhập",
+    "importHint": "Header: name, partNumber, manufacturer, description, footprint, unit, notes, category, tags (tags cách nhau ;).",
+    "importResult": "Nhập xong: tạo {{created}}, cập nhật {{updated}}, bỏ {{skipped}}, lỗi {{errors}}",
     "delete": "Xóa",
     "edit": "Sửa",
     "view": "Chi tiết"

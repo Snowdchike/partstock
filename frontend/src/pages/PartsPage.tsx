@@ -28,6 +28,8 @@ export function PartsPage() {
   const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
 
   const parts = useQuery({
     queryKey: ['parts', q],
@@ -56,18 +58,59 @@ export function PartsPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['parts'] }),
   });
 
+  const importCsv = useMutation({
+    mutationFn: (csv: string) =>
+      apiPost<{ created: number; updated: number; skipped: number; total: number; errors: Array<{ row: number; message: string }> }>(
+        '/api/parts/import-csv',
+        { csv, updateExisting: true, createMissingCategories: true, createMissingTags: true },
+      ),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['parts'] });
+      qc.invalidateQueries({ queryKey: ['categories'] });
+      qc.invalidateQueries({ queryKey: ['tags'] });
+      setShowImport(false);
+      setImportMsg(
+        t('parts.importResult', {
+          created: r.created,
+          updated: r.updated,
+          skipped: r.skipped,
+          errors: r.errors.length,
+        }),
+      );
+    },
+  });
+
+  const exportCsv = async () => {
+    const res = await fetch('/api/parts/export.csv', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`export ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'parts.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (parts.isLoading) return <div>{t('common.loading')}</div>;
   if (parts.error) return <div className="text-red-400">{t('common.error')}</div>;
   const items = parts.data?.items ?? [];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <h1 className="text-xl font-semibold flex-1">{t('parts.title')}</h1>
+        <button type="button" className="btn-ghost text-xs" onClick={() => void exportCsv()}>
+          {t('parts.exportCsv')}
+        </button>
+        <button type="button" className="btn-ghost text-xs" onClick={() => setShowImport(true)}>
+          {t('parts.importCsv')}
+        </button>
         <button type="button" className="btn-primary" onClick={() => setShowForm(true)}>
           + {t('parts.new')}
         </button>
       </div>
+      {importMsg && <div className="text-sm text-emerald-400">{importMsg}</div>}
 
       <input
         className="input"
@@ -135,6 +178,69 @@ export function PartsPage() {
           error={create.error instanceof AppError ? create.error.message : null}
         />
       )}
+      {showImport && (
+        <ImportCsvModal
+          busy={importCsv.isPending}
+          error={importCsv.error instanceof AppError ? importCsv.error.message : null}
+          onClose={() => setShowImport(false)}
+          onSubmit={(csv) => importCsv.mutate(csv)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ImportCsvModal({
+  onSubmit,
+  onClose,
+  busy,
+  error,
+}: {
+  onSubmit: (csv: string) => void;
+  onClose: () => void;
+  busy: boolean;
+  error: string | null;
+}) {
+  const { t } = useTranslation();
+  const [csv, setCsv] = useState(
+    'name,partNumber,manufacturer,description,footprint,unit,notes,category,tags\n10k,R10K,Yageo,10k 1%,0603,pcs,,Passive,SMD\n',
+  );
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-20">
+      <div className="card w-full max-w-2xl space-y-3">
+        <h2 className="font-semibold">{t('parts.importCsv')}</h2>
+        <p className="text-xs text-zinc-400">{t('parts.importHint')}</p>
+        <textarea
+          className="input font-mono text-xs"
+          rows={10}
+          value={csv}
+          onChange={(e) => setCsv(e.target.value)}
+        />
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          className="text-xs"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            setCsv(await f.text());
+          }}
+        />
+        {error && <div className="text-red-400 text-sm">{error}</div>}
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy || !csv.trim()}
+            onClick={() => onSubmit(csv)}
+          >
+            {busy ? '...' : t('parts.import')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { db } from '../db.js';
 import { newId } from '../lib/ids.js';
 import { BadRequestError, NotFoundError } from '../lib/errors.js';
+import { formatPartsCsv, parsePartsCsv } from '../lib/csv.js';
 import { CreatePartSchema, PartQuerySchema, UpdatePartSchema } from '../schemas/part.schema.js';
+import { ImportPartsCsvSchema } from '../schemas/parts-csv.schema.js';
 
 const partInclude = {
   category: { select: { id: true, name: true } },
@@ -69,6 +71,186 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
       limit: q.limit,
       offset: q.offset,
     };
+  });
+
+  app.get('/api/parts/export.csv', { preHandler: [app.requireAuth] }, async (req, reply) => {
+    const ownerId = req.user!.id;
+    const parts = await db.part.findMany({
+      where: { ownerId },
+      orderBy: { name: 'asc' },
+      include: {
+        category: { select: { name: true } },
+        partTags: { include: { tag: { select: { name: true } } } },
+      },
+      take: 10_000,
+    });
+    const csv = formatPartsCsv(
+      parts.map((p) => ({
+        name: p.name,
+        partNumber: p.partNumber,
+        manufacturer: p.manufacturer,
+        description: p.description,
+        footprint: p.footprint,
+        unit: p.unit,
+        notes: p.notes,
+        categoryName: p.category?.name ?? null,
+        tagNames: p.partTags.map((pt) => pt.tag.name),
+      })),
+    );
+    return reply
+      .header('content-type', 'text/csv; charset=utf-8')
+      .header('content-disposition', 'attachment; filename="parts.csv"')
+      .send(csv);
+  });
+
+  app.post('/api/parts/import-csv', { preHandler: [app.requireAuth] }, async (req) => {
+    const input = ImportPartsCsvSchema.parse(req.body);
+    const userId = req.user!.id;
+
+    let rows;
+    try {
+      rows = parsePartsCsv(input.csv);
+    } catch (e) {
+      throw new BadRequestError(e instanceof Error ? e.message : 'Invalid CSV');
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      const errors: Array<{ row: number; message: string }> = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]!;
+        const rowNo = i + 2;
+        try {
+          let categoryId: string | null = null;
+          if (row.category) {
+            let cat = await tx.category.findFirst({
+              where: { ownerId: userId, name: row.category, parentId: null },
+            });
+            if (!cat && input.createMissingCategories) {
+              cat = await tx.category.create({
+                data: {
+                  id: newId(),
+                  ownerId: userId,
+                  name: row.category,
+                  parentId: null,
+                },
+              });
+            }
+            if (!cat) {
+              errors.push({ row: rowNo, message: `Category not found: ${row.category}` });
+              skipped += 1;
+              continue;
+            }
+            categoryId = cat.id;
+          }
+
+          const tagIds: string[] = [];
+          for (const tagName of row.tags) {
+            let tag = await tx.tag.findFirst({
+              where: { ownerId: userId, name: tagName },
+            });
+            if (!tag && input.createMissingTags) {
+              tag = await tx.tag.create({
+                data: { id: newId(), ownerId: userId, name: tagName },
+              });
+            }
+            if (!tag) {
+              errors.push({ row: rowNo, message: `Tag not found: ${tagName}` });
+              continue;
+            }
+            tagIds.push(tag.id);
+          }
+
+          const existing = await tx.part.findFirst({
+            where: {
+              ownerId: userId,
+              partNumber: row.partNumber,
+              ...(row.manufacturer != null
+                ? { manufacturer: row.manufacturer }
+                : { manufacturer: null }),
+            },
+          });
+
+          if (existing) {
+            if (!input.updateExisting) {
+              skipped += 1;
+              continue;
+            }
+            await tx.part.update({
+              where: { id: existing.id },
+              data: {
+                name: row.name,
+                description: row.description,
+                footprint: row.footprint,
+                unit: row.unit || existing.unit,
+                notes: row.notes,
+                categoryId,
+                manufacturer: row.manufacturer,
+              },
+            });
+            await tx.partTag.deleteMany({ where: { partId: existing.id } });
+            if (tagIds.length > 0) {
+              await tx.partTag.createMany({
+                data: tagIds.map((tagId) => ({ partId: existing.id, tagId })),
+              });
+            }
+            updated += 1;
+          } else {
+            const createdPart = await tx.part.create({
+              data: {
+                id: newId(),
+                ownerId: userId,
+                name: row.name,
+                partNumber: row.partNumber,
+                manufacturer: row.manufacturer,
+                description: row.description,
+                footprint: row.footprint,
+                unit: row.unit || 'pcs',
+                notes: row.notes,
+                categoryId,
+                customFields: '{}',
+                partTags: {
+                  create: tagIds.map((tagId) => ({ tagId })),
+                },
+              },
+            });
+            void createdPart;
+            created += 1;
+          }
+        } catch (e) {
+          errors.push({
+            row: rowNo,
+            message: e instanceof Error ? e.message : 'row failed',
+          });
+          skipped += 1;
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          id: newId(),
+          userId,
+          action: 'part.import_csv',
+          entityType: 'Part',
+          entityId: userId,
+          payload: JSON.stringify({
+            rows: rows.length,
+            created,
+            updated,
+            skipped,
+            errorCount: errors.length,
+          }),
+          ipAddress: req.ip,
+        },
+      });
+
+      return { created, updated, skipped, errors, total: rows.length };
+    });
+
+    return result;
   });
 
   app.get<{ Params: { id: string } }>(

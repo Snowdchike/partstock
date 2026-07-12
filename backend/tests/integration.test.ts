@@ -893,3 +893,90 @@ describe('categories + tags', () => {
     expect(delParent.statusCode).toBe(400);
   });
 });
+
+describe('parts CSV import/export', () => {
+  it('exports CSV and imports creating categories/tags', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Seed Cap', partNumber: 'C100N', manufacturer: 'Samsung' },
+    });
+
+    const exp = await app.inject({
+      method: 'GET',
+      url: '/api/parts/export.csv',
+      headers: { cookie: cookies },
+    });
+    expect(exp.statusCode).toBe(200);
+    expect(String(exp.headers['content-type'])).toContain('text/csv');
+    expect(exp.body).toContain('partNumber');
+    expect(exp.body).toContain('C100N');
+
+    const csv = [
+      'name,partNumber,manufacturer,description,footprint,unit,notes,category,tags',
+      '10k resistor,R10K-CSV,Yageo,10k 1%,0603,pcs,from csv,Passive,SMD;Cheap',
+      'MCU,STM32F103,ST,Bluepill,LQFP48,pcs,,MCU,SMD',
+    ].join('\n');
+
+    const imp = await app.inject({
+      method: 'POST',
+      url: '/api/parts/import-csv',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: {
+        csv,
+        updateExisting: true,
+        createMissingCategories: true,
+        createMissingTags: true,
+      },
+    });
+    expect(imp.statusCode).toBe(200);
+    const body = imp.json() as {
+      created: number;
+      updated: number;
+      total: number;
+      errors: unknown[];
+    };
+    expect(body.total).toBe(2);
+    expect(body.created).toBe(2);
+    expect(body.errors).toHaveLength(0);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/parts?q=R10K-CSV',
+      headers: { cookie: cookies },
+    });
+    const items = (list.json() as { items: Array<{ partNumber: string; category?: { name: string }; tags?: Array<{ name: string }> }> }).items;
+    expect(items).toHaveLength(1);
+    expect(items[0]!.category?.name).toBe('Passive');
+    expect(items[0]!.tags?.map((t) => t.name).sort()).toEqual(['Cheap', 'SMD']);
+
+    // re-import updates existing
+    const csv2 = [
+      'name,partNumber,manufacturer,description,footprint,unit,notes,category,tags',
+      '10k resistor UPD,R10K-CSV,Yageo,updated,0603,pcs,note2,Passive,SMD',
+    ].join('\n');
+    const imp2 = await app.inject({
+      method: 'POST',
+      url: '/api/parts/import-csv',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { csv: csv2, updateExisting: true },
+    });
+    expect(imp2.statusCode).toBe(200);
+    expect((imp2.json() as { updated: number }).updated).toBe(1);
+
+    const got = await app.inject({
+      method: 'GET',
+      url: '/api/parts?q=R10K-CSV',
+      headers: { cookie: cookies },
+    });
+    expect((got.json() as { items: Array<{ name: string }> }).items[0]!.name).toBe('10k resistor UPD');
+  });
+
+  it('requires auth for export', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/parts/export.csv' });
+    expect(res.statusCode).toBe(401);
+  });
+});

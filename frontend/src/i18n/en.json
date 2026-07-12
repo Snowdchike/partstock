@@ -50,6 +50,11 @@
     },
     "noCategory": "(no category)",
     "noTags": "No tags yet — create under Categories",
+    "exportCsv": "Export CSV",
+    "importCsv": "Import CSV",
+    "import": "Import",
+    "importHint": "Header: name, partNumber, manufacturer, description, footprint, unit, notes, category, tags (tags separated by ;).",
+    "importResult": "Import done: created {{created}}, updated {{updated}}, skipped {{skipped}}, errors {{errors}}",
     "delete": "Delete",
     "edit": "Edit",
     "view": "View"
