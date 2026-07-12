@@ -27,7 +27,7 @@ Status: `done` | `partial` | `todo` | `later` | `wont`
 | Tags | partial | CRUD + part assign + UI; done for P0 slice |
 | **Attachments** (datasheet PDF, images) | todo | local disk + owner scope |
 | **Part detail page** (rich notes, history) | partial | view/edit + stock + lots UI done; history later |
-| **Stock receive UI** (+qty at location) | todo | core daily use |
+| Stock receive UI (+qty at location) | done | adjust form + list-all stock |
 | **CSV/JSON import-export parts+stock** | todo | |
 | **Parametric / custom fields UI** | partial | JSON blob; no schema UI |
 | **Manufacturer / footprint as entities** | todo | now free strings |
