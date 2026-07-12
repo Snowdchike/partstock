@@ -13,7 +13,8 @@
     "boms": "BOM",
     "builds": "Lắp ráp",
     "labels": "Nhãn",
-    "categories": "Danh mục"
+    "categories": "Danh mục",
+    "scan": "Quét"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -198,6 +199,18 @@
       "name": "Tên",
       "color": "Màu (hex)"
     }
+  },
+  "scan": {
+    "title": "Quét mã",
+    "hint": "Dùng máy quét USB (gõ + Enter) hoặc camera (nếu trình duyệt hỗ trợ BarcodeDetector). Mã nhãn: MPN|hãng|lô.",
+    "placeholder": "Quét hoặc gõ mã…",
+    "lookup": "Tìm",
+    "startCamera": "Bật camera",
+    "stopCamera": "Tắt camera",
+    "noCameraApi": "Trình duyệt không hỗ trợ BarcodeDetector — dùng máy quét USB.",
+    "cameraDenied": "Không mở được camera (quyền bị từ chối).",
+    "resultsFor": "Kết quả cho",
+    "none": "Không tìm thấy"
   },
   "common": {
     "save": "Lưu",

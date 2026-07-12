@@ -894,6 +894,76 @@ describe('categories + tags', () => {
   });
 });
 
+describe('scan lookup', () => {
+  it('finds part by MPN and label payload', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+
+    const part = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Scan Part', partNumber: 'SCAN-MPN-1', manufacturer: 'Yageo' },
+    });
+    const partId = (part.json() as { id: string }).id;
+
+    const byMpn = await app.inject({
+      method: 'GET',
+      url: '/api/scan?q=SCAN-MPN-1',
+      headers: { cookie: cookies },
+    });
+    expect(byMpn.statusCode).toBe(200);
+    const mpnBody = byMpn.json() as {
+      count: number;
+      primary: { type: string; partId?: string } | null;
+      matches: Array<{ type: string }>;
+    };
+    expect(mpnBody.count).toBeGreaterThan(0);
+    expect(mpnBody.primary?.type).toBe('part');
+    expect(mpnBody.primary?.partId).toBe(partId);
+
+    const lot = await app.inject({
+      method: 'POST',
+      url: '/api/lots',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, code: 'LOT-SCAN-9' },
+    });
+    expect(lot.statusCode).toBe(201);
+
+    const lbl = await app.inject({
+      method: 'POST',
+      url: '/api/labels',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { partId, format: 'qr', copies: 1 },
+    });
+    expect(lbl.statusCode).toBe(201);
+    const payload = (lbl.json() as { items: Array<{ payload: string }> }).items[0]!.payload;
+
+    const byPayload = await app.inject({
+      method: 'GET',
+      url: `/api/scan?q=${encodeURIComponent(payload)}`,
+      headers: { cookie: cookies },
+    });
+    expect(byPayload.statusCode).toBe(200);
+    const pBody = byPayload.json() as { primary: { partId?: string } | null; matches: Array<{ type: string }> };
+    expect(pBody.primary?.partId).toBe(partId);
+    expect(pBody.matches.some((m) => m.type === 'label' || m.type === 'part')).toBe(true);
+
+    const byLot = await app.inject({
+      method: 'GET',
+      url: '/api/scan?q=LOT-SCAN-9',
+      headers: { cookie: cookies },
+    });
+    expect((byLot.json() as { matches: Array<{ type: string }> }).matches.some((m) => m.type === 'lot')).toBe(
+      true,
+    );
+  });
+
+  it('requires auth', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/scan?q=x' });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
 describe('parts CSV import/export', () => {
   it('exports CSV and imports creating categories/tags', async () => {
     const { cookies, csrf } = await registerAndLogin();

@@ -20,6 +20,7 @@ import { registerStockRoutes } from './routes/stock.routes.js';
 import { registerBomRoutes } from './routes/boms.routes.js';
 import { registerBuildRoutes } from './routes/builds.routes.js';
 import { registerLabelRoutes } from './routes/labels.routes.js';
+import { registerScanRoutes } from './routes/scan.routes.js';
 import { registerCategoryRoutes } from './routes/categories.routes.js';
 import { registerTagRoutes } from './routes/tags.routes.js';
 
@@ -128,6 +129,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerBomRoutes(app);
   await registerBuildRoutes(app);
   await registerLabelRoutes(app);
+  await registerScanRoutes(app);
 
   // --- Static frontend (production) ---
   // In dev, run `npm run dev` in /frontend and it proxies /api to this server.

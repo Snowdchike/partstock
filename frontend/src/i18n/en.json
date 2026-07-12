@@ -13,7 +13,8 @@
     "boms": "BOMs",
     "builds": "Builds",
     "labels": "Labels",
-    "categories": "Categories"
+    "categories": "Categories",
+    "scan": "Scan"
   },
   "auth": {
     "login": "Sign in",
@@ -198,6 +199,18 @@
       "name": "Name",
       "color": "Color (hex)"
     }
+  },
+  "scan": {
+    "title": "Scan code",
+    "hint": "Use a USB wedge scanner (type + Enter) or camera when BarcodeDetector is available. Label payload: MPN|mfr|lot.",
+    "placeholder": "Scan or type code…",
+    "lookup": "Lookup",
+    "startCamera": "Start camera",
+    "stopCamera": "Stop camera",
+    "noCameraApi": "BarcodeDetector not supported — use a USB scanner.",
+    "cameraDenied": "Camera permission denied.",
+    "resultsFor": "Results for",
+    "none": "No matches"
   },
   "common": {
     "save": "Save",
