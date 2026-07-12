@@ -19,6 +19,7 @@ import { BomsPage } from './pages/BomsPage';
 import { BuildsPage } from './pages/BuildsPage';
 import { LabelsPage } from './pages/LabelsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
+import { PartDetailPage } from './pages/PartDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,15 @@ const partsRoute = createRoute({
     if (!isAuthed()) throw redirect({ to: '/login' });
   },
   component: PartsPage,
+});
+
+const partDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/parts/$partId',
+  beforeLoad: () => {
+    if (!isAuthed()) throw redirect({ to: '/login' });
+  },
+  component: PartDetailPage,
 });
 
 const locationsRoute = createRoute({
@@ -118,6 +128,7 @@ const loginRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   partsRoute,
+  partDetailRoute,
   locationsRoute,
   stockRoute,
   categoriesRoute,

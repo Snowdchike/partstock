@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost, apiDelete, AppError } from '../lib/api';
@@ -94,7 +95,11 @@ export function PartsPage() {
             <tbody>
               {items.map((p) => (
                 <tr key={p.id}>
-                  <td className="font-medium">{p.name}</td>
+                  <td className="font-medium">
+                    <Link to="/parts/$partId" params={{ partId: p.id }} className="text-accent hover:underline">
+                      {p.name}
+                    </Link>
+                  </td>
                   <td className="font-mono text-xs">{p.partNumber}</td>
                   <td>{p.manufacturer ?? '—'}</td>
                   <td className="text-sm text-zinc-400">{p.category?.name ?? '—'}</td>

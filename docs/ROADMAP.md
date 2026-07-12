@@ -26,7 +26,7 @@ Status: `done` | `partial` | `todo` | `later` | `wont`
 | Categories (tree) | partial | CRUD + cycle check + UI; done for P0 slice |
 | Tags | partial | CRUD + part assign + UI; done for P0 slice |
 | **Attachments** (datasheet PDF, images) | todo | local disk + owner scope |
-| **Part detail page** (rich notes, history) | partial | API get exists; UI list-only |
+| **Part detail page** (rich notes, history) | partial | view/edit + stock + lots UI done; history later |
 | **Stock receive UI** (+qty at location) | todo | core daily use |
 | **CSV/JSON import-export parts+stock** | todo | |
 | **Parametric / custom fields UI** | partial | JSON blob; no schema UI |

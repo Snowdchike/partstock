@@ -93,7 +93,9 @@
     "code": "Lot code",
     "receivedAt": "Received",
     "expiresAt": "Expires",
-    "notes": "Notes"
+    "notes": "Notes",
+    "empty": "No lots yet",
+    "confirmDelete": "Delete this lot?"
   },
   "boms": {
     "title": "BOMs",

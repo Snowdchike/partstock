@@ -93,7 +93,9 @@
     "code": "Mã lô",
     "receivedAt": "Ngày nhận",
     "expiresAt": "Hạn dùng",
-    "notes": "Ghi chú"
+    "notes": "Ghi chú",
+    "empty": "Chưa có lô",
+    "confirmDelete": "Xóa lô này?"
   },
   "boms": {
     "title": "BOM / Danh mục linh kiện",
