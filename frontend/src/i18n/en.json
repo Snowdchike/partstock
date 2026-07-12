@@ -66,13 +66,26 @@
   "stock": {
     "title": "Stock summary",
     "empty": "No stock yet",
-    "threshold": "Low-stock threshold",
+    "threshold": "Threshold",
+    "lowOnly": "Low stock only",
     "total": "Total",
     "reserved": "Reserved",
     "available": "Available",
     "location": "Location",
     "lot": "Lot",
-    "quantity": "Quantity"
+    "quantity": "Quantity",
+    "adjust": "Receive / consume",
+    "in": "Receive (+)",
+    "out": "Consume (−)",
+    "noParts": "No parts yet",
+    "noLocations": "No locations yet",
+    "noLot": "(no lot)",
+    "reasonPlaceholder": "e.g. LCSC order, used on build",
+    "fields": {
+      "part": "Part",
+      "direction": "Direction",
+      "reason": "Reason"
+    }
   },
   "lots": {
     "title": "Lots",

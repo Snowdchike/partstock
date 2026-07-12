@@ -305,6 +305,26 @@ describe('locations + lots + stock', () => {
       headers: { cookie: cookies },
     });
     expect((summary.json() as { total: number }).total).toBe(50);
+
+    // list all stock (default — not low-only)
+    const listAll = await app.inject({
+      method: 'GET',
+      url: '/api/stock',
+      headers: { cookie: cookies },
+    });
+    expect(listAll.statusCode).toBe(200);
+    const allRows = listAll.json() as Array<{ partId: string; total: number }>;
+    expect(allRows.some((r) => r.partId === partId && r.total === 50)).toBe(true);
+
+    // low-only with high threshold still includes
+    const listLow = await app.inject({
+      method: 'GET',
+      url: '/api/stock?lowOnly=1&threshold=10',
+      headers: { cookie: cookies },
+    });
+    expect(
+      (listLow.json() as Array<{ partId: string }>).some((r) => r.partId === partId),
+    ).toBe(false);
   });
 });
 

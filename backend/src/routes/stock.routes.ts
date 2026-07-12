@@ -102,10 +102,12 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // List low-stock: parts whose total < threshold (owner-scoped)
+  // List stock grouped by part (owner-scoped).
+  // Default: all stock. lowOnly=1 + threshold → parts with total <= threshold.
   app.get('/api/stock', { preHandler: [app.requireAuth] }, async (req) => {
     const ownerId = req.user!.id;
-    const q = req.query as { threshold?: string };
+    const q = req.query as { threshold?: string; lowOnly?: string };
+    const lowOnly = q.lowOnly === '1' || q.lowOnly === 'true';
     const threshold = Number(q.threshold ?? '0');
     const items = await db.stockItem.findMany({
       where: { ownerId },
@@ -116,24 +118,43 @@ export async function registerStockRoutes(app: FastifyInstance): Promise<void> {
       string,
       {
         partId: string;
-        part: typeof items[number]['part'];
+        part: (typeof items)[number]['part'];
         total: number;
-        lots: Array<{ lotId: string | null; lotCode: string | null; locationId: string; locationName: string; quantity: number }>;
+        reserved: number;
+        lots: Array<{
+          lotId: string | null;
+          lotCode: string | null;
+          locationId: string;
+          locationName: string;
+          quantity: number;
+          reservedQuantity: number;
+        }>;
       }
     >();
     for (const it of items) {
       const key = it.partId;
-      const g = grouped.get(key) ?? { partId: key, part: it.part, total: 0, lots: [] };
+      const g = grouped.get(key) ?? {
+        partId: key,
+        part: it.part,
+        total: 0,
+        reserved: 0,
+        lots: [],
+      };
       g.total += it.quantity;
+      g.reserved += it.reservedQuantity;
       g.lots.push({
         lotId: it.lotId,
         lotCode: it.lot?.code ?? null,
         locationId: it.locationId,
         locationName: it.location.name,
         quantity: it.quantity,
+        reservedQuantity: it.reservedQuantity,
       });
       grouped.set(key, g);
     }
-    return Array.from(grouped.values()).filter((g) => g.total <= threshold);
+    let rows = Array.from(grouped.values());
+    if (lowOnly) rows = rows.filter((g) => g.total <= threshold);
+    rows.sort((a, b) => a.part.name.localeCompare(b.part.name));
+    return rows;
   });
 }

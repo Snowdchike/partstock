@@ -66,13 +66,26 @@
   "stock": {
     "title": "Tổng tồn kho",
     "empty": "Chưa có dữ liệu tồn kho",
-    "threshold": "Ngưỡng cảnh báo",
+    "threshold": "Ngưỡng",
+    "lowOnly": "Chỉ cảnh báo thấp",
     "total": "Tổng cộng",
     "reserved": "Đã đặt",
     "available": "Khả dụng",
     "location": "Vị trí",
     "lot": "Lô",
-    "quantity": "Số lượng"
+    "quantity": "Số lượng",
+    "adjust": "Nhập / xuất kho",
+    "in": "Nhập (+)",
+    "out": "Xuất (−)",
+    "noParts": "Chưa có linh kiện",
+    "noLocations": "Chưa có vị trí",
+    "noLot": "(không lô)",
+    "reasonPlaceholder": "vd: mua LCSC, dùng lắp board",
+    "fields": {
+      "part": "Linh kiện",
+      "direction": "Hướng",
+      "reason": "Lý do"
+    }
   },
   "lots": {
     "title": "Lô hàng",
