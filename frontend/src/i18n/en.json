@@ -217,6 +217,16 @@
     "resultsFor": "Results for",
     "none": "No matches"
   },
+  "attachments": {
+    "title": "Attachments",
+    "upload": "Upload file",
+    "empty": "No files yet",
+    "name": "File",
+    "kind": "Type",
+    "size": "Size",
+    "hint": "PDF datasheet, images (PNG/JPEG/WebP/GIF), or plain text. Max 10 MB.",
+    "confirmDelete": "Delete this file?"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

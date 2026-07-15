@@ -25,8 +25,8 @@ Status: `done` | `partial` | `todo` | `later` | `wont`
 | Import part from shop URL | done | JSON-LD/OG preview + create; SSRF blocked |
 | Categories (tree) | partial | CRUD + cycle check + UI; done for P0 slice |
 | Tags | partial | CRUD + part assign + UI; done for P0 slice |
-| **Attachments** (datasheet PDF, images) | todo | local disk + owner scope |
-| **Part detail page** (rich notes, history) | partial | view/edit + stock + lots UI done; history later |
+| Attachments (datasheet PDF, images) | done | local disk + owner scope; multipart; part detail UI |
+| **Part detail page** (rich notes, history) | partial | view/edit + stock + lots + attachments; history later |
 | Stock receive UI (+qty at location) | done | adjust form + list-all stock |
 | CSV import-export parts | done | category/tags auto-create; stock rows later |
 | **Parametric / custom fields UI** | partial | JSON blob; no schema UI |

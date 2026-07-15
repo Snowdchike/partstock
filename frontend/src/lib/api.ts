@@ -76,5 +76,36 @@ export const apiPost = <T>(path: string, body?: unknown) => api<T>(path, { metho
 export const apiPatch = <T>(path: string, body?: unknown) => api<T>(path, { method: 'PATCH', body });
 export const apiDelete = <T>(path: string) => api<T>(path, { method: 'DELETE' });
 
+/** Multipart upload (field name "file"). CSRF via header; do not set Content-Type (browser sets boundary). */
+export async function apiUploadFile<T = unknown>(path: string, file: File): Promise<T> {
+  const headers: Record<string, string> = {};
+  const csrf = readCookie('pbx_csrf');
+  if (csrf) headers['x-csrf-token'] = csrf;
+
+  const body = new FormData();
+  body.append('file', file);
+
+  const res = await fetch(path, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers,
+    body,
+  });
+
+  if (res.status === 204) return undefined as T;
+  const ct = res.headers.get('content-type') ?? '';
+  const data: unknown = ct.includes('application/json') ? await res.json() : await res.text();
+  if (!res.ok) {
+    const env = data as { error?: { code?: string; message?: string; details?: unknown } };
+    throw new AppError(
+      res.status,
+      env.error?.code ?? 'ERROR',
+      env.error?.message ?? `HTTP ${res.status}`,
+      env.error?.details,
+    );
+  }
+  return data as T;
+}
+
 // Convenience hooks via TanStack Query
 export { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

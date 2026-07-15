@@ -24,6 +24,7 @@ import { registerScanRoutes } from './routes/scan.routes.js';
 import { registerCategoryRoutes } from './routes/categories.routes.js';
 import { registerTagRoutes } from './routes/tags.routes.js';
 import { registerUrlImportRoutes } from './routes/url-import.routes.js';
+import { registerAttachmentRoutes } from './routes/attachments.routes.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const cfg = loadConfig();
@@ -36,7 +37,8 @@ export async function buildServer(): Promise<FastifyInstance> {
             level: cfg.LOG_LEVEL,
             ...(cfg.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : {}),
           },
-    bodyLimit: 1024 * 256, // 256 KiB — generous for JSON, blocks payload bombs
+    // 256 KiB for JSON; multipart plugin enforces its own per-file limit.
+    bodyLimit: 1024 * 256,
     trustProxy: true,
   });
 
@@ -132,6 +134,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await registerLabelRoutes(app);
   await registerScanRoutes(app);
   await registerUrlImportRoutes(app);
+  await registerAttachmentRoutes(app);
 
   // --- Static frontend (production) ---
   // In dev, run `npm run dev` in /frontend and it proxies /api to this server.

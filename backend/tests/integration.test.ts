@@ -9,6 +9,7 @@ beforeAll(async () => {
   // Clean test DB before any tests run
   const tables = [
     'AuditLog',
+    'Attachment',
     'Label',
     'BuildPick',
     'BuildStage',
@@ -39,6 +40,7 @@ afterAll(async () => {
 beforeEach(async () => {
   // Truncate between tests to keep state isolated (FK-safe order)
   await db.auditLog.deleteMany();
+  await db.attachment.deleteMany();
   await db.label.deleteMany();
   await db.buildPick.deleteMany();
   await db.buildStage.deleteMany();
@@ -1070,5 +1072,199 @@ describe('parts CSV import/export', () => {
   it('requires auth for export', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/parts/export.csv' });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+function multipartBody(fields: { name: string; value: string | Buffer; filename?: string; contentType?: string }[]) {
+  const boundary = '----PartstockTestBoundary7MA4YWxk';
+  const chunks: Buffer[] = [];
+  for (const f of fields) {
+    chunks.push(Buffer.from(`--${boundary}\r\n`));
+    if (f.filename !== undefined) {
+      chunks.push(
+        Buffer.from(
+          `Content-Disposition: form-data; name="${f.name}"; filename="${f.filename}"\r\n` +
+            `Content-Type: ${f.contentType ?? 'application/octet-stream'}\r\n\r\n`,
+        ),
+      );
+      chunks.push(Buffer.isBuffer(f.value) ? f.value : Buffer.from(f.value));
+      chunks.push(Buffer.from('\r\n'));
+    } else {
+      chunks.push(Buffer.from(`Content-Disposition: form-data; name="${f.name}"\r\n\r\n${f.value}\r\n`));
+    }
+  }
+  chunks.push(Buffer.from(`--${boundary}--\r\n`));
+  return {
+    payload: Buffer.concat(chunks),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
+
+describe('attachments', () => {
+  it('uploads, lists, downloads, deletes; isolates by owner; rejects bad mime', async () => {
+    const a = await registerAndLogin();
+    const b = await registerAndLogin();
+
+    const partA = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+      payload: { name: 'Att Part', partNumber: 'ATT-1', unit: 'pcs' },
+    });
+    expect(partA.statusCode).toBe(201);
+    const partId = (partA.json() as { id: string }).id;
+
+    const pdf = Buffer.from('%PDF-1.4 fake datasheet content for test');
+    const up = multipartBody([
+      { name: 'file', value: pdf, filename: 'ds.pdf', contentType: 'application/pdf' },
+    ]);
+    const upload = await app.inject({
+      method: 'POST',
+      url: `/api/parts/${partId}/attachments`,
+      headers: {
+        cookie: a.cookies,
+        'x-csrf-token': a.csrf,
+        'content-type': up.contentType,
+      },
+      payload: up.payload,
+    });
+    expect(upload.statusCode).toBe(201);
+    const att = upload.json() as {
+      id: string;
+      originalName: string;
+      mimeType: string;
+      sizeBytes: number;
+      kind: string;
+      url: string;
+    };
+    expect(att.originalName).toBe('ds.pdf');
+    expect(att.mimeType).toBe('application/pdf');
+    expect(att.kind).toBe('datasheet');
+    expect(att.sizeBytes).toBe(pdf.length);
+    expect(att.url).toBe(`/api/attachments/${att.id}/download`);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: `/api/parts/${partId}/attachments`,
+      headers: { cookie: a.cookies },
+    });
+    expect(list.statusCode).toBe(200);
+    expect((list.json() as { items: unknown[] }).items).toHaveLength(1);
+
+    const dl = await app.inject({
+      method: 'GET',
+      url: `/api/attachments/${att.id}/download`,
+      headers: { cookie: a.cookies },
+    });
+    expect(dl.statusCode).toBe(200);
+    expect(dl.headers['content-type']).toMatch(/application\/pdf/);
+    expect(dl.headers['content-disposition']).toMatch(/attachment/);
+    expect(dl.headers['x-content-type-options']).toBe('nosniff');
+    expect(Buffer.from(dl.rawPayload).equals(pdf)).toBe(true);
+
+    // Owner B cannot list/download/delete A's attachment
+    const listB = await app.inject({
+      method: 'GET',
+      url: `/api/parts/${partId}/attachments`,
+      headers: { cookie: b.cookies },
+    });
+    expect(listB.statusCode).toBe(404);
+
+    const dlB = await app.inject({
+      method: 'GET',
+      url: `/api/attachments/${att.id}/download`,
+      headers: { cookie: b.cookies },
+    });
+    expect(dlB.statusCode).toBe(404);
+
+    const delB = await app.inject({
+      method: 'DELETE',
+      url: `/api/attachments/${att.id}`,
+      headers: { cookie: b.cookies, 'x-csrf-token': b.csrf },
+    });
+    expect(delB.statusCode).toBe(404);
+
+    // Reject disallowed mime
+    const exe = multipartBody([
+      { name: 'file', value: Buffer.from('MZ exe'), filename: 'x.exe', contentType: 'application/x-msdownload' },
+    ]);
+    const bad = await app.inject({
+      method: 'POST',
+      url: `/api/parts/${partId}/attachments`,
+      headers: {
+        cookie: a.cookies,
+        'x-csrf-token': a.csrf,
+        'content-type': exe.contentType,
+      },
+      payload: exe.payload,
+    });
+    expect(bad.statusCode).toBe(400);
+
+    // Delete by owner
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/attachments/${att.id}`,
+      headers: { cookie: a.cookies, 'x-csrf-token': a.csrf },
+    });
+    expect(del.statusCode).toBe(204);
+
+    const list2 = await app.inject({
+      method: 'GET',
+      url: `/api/parts/${partId}/attachments`,
+      headers: { cookie: a.cookies },
+    });
+    expect((list2.json() as { items: unknown[] }).items).toHaveLength(0);
+
+    const dlGone = await app.inject({
+      method: 'GET',
+      url: `/api/attachments/${att.id}/download`,
+      headers: { cookie: a.cookies },
+    });
+    expect(dlGone.statusCode).toBe(404);
+  });
+
+  it('deletes disk files when part is deleted', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+    const partRes = await app.inject({
+      method: 'POST',
+      url: '/api/parts',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { name: 'Del Att', partNumber: 'ATT-DEL', unit: 'pcs' },
+    });
+    const partId = (partRes.json() as { id: string }).id;
+    const body = multipartBody([
+      {
+        name: 'file',
+        value: Buffer.from('hello image'),
+        filename: 'a.png',
+        contentType: 'image/png',
+      },
+    ]);
+    const upload = await app.inject({
+      method: 'POST',
+      url: `/api/parts/${partId}/attachments`,
+      headers: {
+        cookie: cookies,
+        'x-csrf-token': csrf,
+        'content-type': body.contentType,
+      },
+      payload: body.payload,
+    });
+    expect(upload.statusCode).toBe(201);
+    const attId = (upload.json() as { id: string }).id;
+
+    const delPart = await app.inject({
+      method: 'DELETE',
+      url: `/api/parts/${partId}`,
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+    });
+    expect(delPart.statusCode).toBe(204);
+
+    const dl = await app.inject({
+      method: 'GET',
+      url: `/api/attachments/${attId}/download`,
+      headers: { cookie: cookies },
+    });
+    expect(dl.statusCode).toBe(404);
   });
 });

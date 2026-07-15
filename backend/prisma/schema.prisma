@@ -121,13 +121,14 @@ model Part {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  category   Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  partTags   PartTag[]
-  lots       Lot[]
-  stockItems StockItem[]
-  bomLines   BomLine[]
-  buildPicks BuildPick[]
-  labels     Label[]
+  category     Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  partTags     PartTag[]
+  lots         Lot[]
+  stockItems   StockItem[]
+  bomLines     BomLine[]
+  buildPicks   BuildPick[]
+  labels       Label[]
+  attachments  Attachment[]
 
   @@unique([ownerId, manufacturer, partNumber])
   @@index([ownerId])
@@ -135,6 +136,26 @@ model Part {
   @@index([ownerId, partNumber])
   @@index([ownerId, manufacturer])
   @@index([categoryId])
+}
+
+// Files on local disk under UPLOAD_DIR; storageKey is never user-controlled path.
+model Attachment {
+  id           String   @id
+  ownerId      String
+  partId       String
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String // relative: {ownerId}/{id}
+  kind         String // datasheet | image | other
+  createdAt    DateTime @default(now())
+
+  part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  @@unique([storageKey])
+  @@index([ownerId])
+  @@index([partId])
+  @@index([ownerId, partId])
 }
 
 model Lot {

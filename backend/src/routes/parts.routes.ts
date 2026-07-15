@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import { newId } from '../lib/ids.js';
 import { BadRequestError, NotFoundError } from '../lib/errors.js';
 import { formatPartsCsv, parsePartsCsv } from '../lib/csv.js';
+import { removeAttachmentFile } from '../lib/attachments.js';
 import { CreatePartSchema, PartQuerySchema, UpdatePartSchema } from '../schemas/part.schema.js';
 import { ImportPartsCsvSchema } from '../schemas/parts-csv.schema.js';
 
@@ -377,6 +378,13 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
       const userId = req.user!.id;
       const existing = await db.part.findFirst({ where: { id: req.params.id, ownerId: userId } });
       if (!existing) throw new NotFoundError('Part not found');
+
+      // Collect storage keys before cascade so disk files can be removed.
+      const files = await db.attachment.findMany({
+        where: { partId: req.params.id, ownerId: userId },
+        select: { storageKey: true },
+      });
+
       await db.part.delete({ where: { id: req.params.id } });
       await db.auditLog.create({
         data: {
@@ -389,6 +397,9 @@ export async function registerPartRoutes(app: FastifyInstance): Promise<void> {
           ipAddress: req.ip,
         },
       });
+
+      await Promise.all(files.map((f: { storageKey: string }) => removeAttachmentFile(f.storageKey).catch(() => {})));
+
       return reply.status(204).send();
     },
   );

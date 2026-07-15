@@ -10,3 +10,5 @@ process.env.ALLOWED_ORIGINS = 'http://localhost:5173';
 process.env.LOG_LEVEL = 'silent';
 process.env.RATE_LIMIT_MAX = '10000';
 process.env.AUTH_RATE_LIMIT_MAX = '10000';
+process.env.UPLOAD_DIR = './data/uploads-test';
+process.env.UPLOAD_MAX_BYTES = String(2 * 1024 * 1024);

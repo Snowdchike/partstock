@@ -217,6 +217,16 @@
     "resultsFor": "Kết quả cho",
     "none": "Không tìm thấy"
   },
+  "attachments": {
+    "title": "Tệp đính kèm",
+    "upload": "Tải lên",
+    "empty": "Chưa có tệp",
+    "name": "Tệp",
+    "kind": "Loại",
+    "size": "Dung lượng",
+    "hint": "Datasheet PDF, ảnh (PNG/JPEG/WebP/GIF), hoặc text. Tối đa 10 MB.",
+    "confirmDelete": "Xóa tệp này?"
+  },
   "common": {
     "save": "Lưu",
     "cancel": "Hủy",

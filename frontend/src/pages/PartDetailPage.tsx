@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiDelete, apiGet, apiPatch, apiPost, AppError } from '../lib/api';
+import { apiDelete, apiGet, apiPatch, apiPost, apiUploadFile, AppError } from '../lib/api';
 
 type Tag = { id: string; name: string; color: string | null };
 type Category = { id: string; name: string };
@@ -13,6 +13,16 @@ type StockLine = {
   reservedQuantity: number;
   location: { id: string; name: string };
   lot: { id: string; code: string } | null;
+};
+type Attachment = {
+  id: string;
+  partId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: string;
+  createdAt: string;
+  url: string;
 };
 
 type PartDetail = {
@@ -60,6 +70,10 @@ export function PartDetailPage() {
     queryKey: ['tags'],
     queryFn: () => apiGet<Tag[]>('/api/tags'),
   });
+  const atts = useQuery({
+    queryKey: ['attachments', partId],
+    queryFn: () => apiGet<{ items: Attachment[] }>(`/api/parts/${partId}/attachments`),
+  });
 
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) => apiPatch<PartDetail>(`/api/parts/${partId}`, body),
@@ -82,6 +96,16 @@ export function PartDetailPage() {
   const delLot = useMutation({
     mutationFn: (id: string) => apiDelete(`/api/lots/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['part', partId] }),
+  });
+
+  const uploadAtt = useMutation({
+    mutationFn: (file: File) => apiUploadFile<Attachment>(`/api/parts/${partId}/attachments`, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', partId] }),
+  });
+
+  const delAtt = useMutation({
+    mutationFn: (id: string) => apiDelete(`/api/attachments/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', partId] }),
   });
 
   if (partQ.isLoading) return <div>{t('common.loading')}</div>;
@@ -216,6 +240,75 @@ export function PartDetailPage() {
         )}
       </section>
 
+      <section className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="font-semibold flex-1">{t('attachments.title')}</h2>
+          <label className="btn-primary text-xs cursor-pointer">
+            {uploadAtt.isPending ? t('common.loading') : t('attachments.upload')}
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,application/pdf,image/*,text/plain"
+              disabled={uploadAtt.isPending}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) uploadAtt.mutate(f);
+              }}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-zinc-500">{t('attachments.hint')}</p>
+        {uploadAtt.error instanceof AppError && (
+          <div className="text-red-400 text-sm">{uploadAtt.error.message}</div>
+        )}
+        {atts.isLoading ? (
+          <div className="text-sm text-zinc-500">{t('common.loading')}</div>
+        ) : (atts.data?.items ?? []).length === 0 ? (
+          <div className="card text-center text-zinc-500 text-sm">{t('attachments.empty')}</div>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('attachments.name')}</th>
+                  <th>{t('attachments.kind')}</th>
+                  <th>{t('attachments.size')}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(atts.data?.items ?? []).map((a) => (
+                  <tr key={a.id}>
+                    <td className="text-sm">
+                      <a href={a.url} className="text-accent hover:underline" download={a.originalName}>
+                        {a.originalName}
+                      </a>
+                    </td>
+                    <td className="text-xs text-zinc-400">{a.kind}</td>
+                    <td className="font-mono text-xs">{formatBytes(a.sizeBytes)}</td>
+                    <td className="text-right">
+                      <button
+                        type="button"
+                        className="text-red-400 text-xs"
+                        onClick={() => {
+                          if (confirm(t('attachments.confirmDelete'))) delAtt.mutate(a.id);
+                        }}
+                      >
+                        {t('common.delete')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {delAtt.error instanceof AppError && (
+          <div className="text-red-400 text-sm">{delAtt.error.message}</div>
+        )}
+      </section>
+
       {showLot && (
         <LotModal
           busy={addLot.isPending}
@@ -226,6 +319,12 @@ export function PartDetailPage() {
       )}
     </div>
   );
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function Row({

@@ -25,6 +25,9 @@ const EnvSchema = z.object({
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  // Absolute or relative (cwd) directory for part attachments. Created on demand.
+  UPLOAD_DIR: z.string().min(1).default('./data/uploads'),
+  UPLOAD_MAX_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

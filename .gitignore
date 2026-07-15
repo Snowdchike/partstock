@@ -39,6 +39,12 @@ backend/prisma/*.db-journal
 backend/prisma/*.db-wal
 backend/prisma/*.db-shm
 
+# Uploaded attachments (owner-scoped files on disk)
+backend/data/uploads/
+backend/data/uploads-test/
+data/uploads/
+data/uploads-test/
+
 # Misc
 *.tmp
 .cache/
