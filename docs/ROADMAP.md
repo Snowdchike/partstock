@@ -22,7 +22,7 @@ Status: `done` | `partial` | `todo` | `later` | `wont`
 | Auth session + CSRF | done | |
 | Labels generate (QR/Code128) | done | print sheet |
 | Barcode scan (webcam + keyboard wedge) | done | /api/scan + Scan page; BarcodeDetector optional |
-| **Import part from shop URL** | todo | metadata first; bot walls expected |
+| Import part from shop URL | done | JSON-LD/OG preview + create; SSRF blocked |
 | Categories (tree) | partial | CRUD + cycle check + UI; done for P0 slice |
 | Tags | partial | CRUD + part assign + UI; done for P0 slice |
 | **Attachments** (datasheet PDF, images) | todo | local disk + owner scope |

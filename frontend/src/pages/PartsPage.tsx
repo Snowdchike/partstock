@@ -29,6 +29,7 @@ export function PartsPage() {
   const [q, setQ] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showUrlImport, setShowUrlImport] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
 
   const parts = useQuery({
@@ -105,6 +106,9 @@ export function PartsPage() {
         </button>
         <button type="button" className="btn-ghost text-xs" onClick={() => setShowImport(true)}>
           {t('parts.importCsv')}
+        </button>
+        <button type="button" className="btn-ghost text-xs" onClick={() => setShowUrlImport(true)}>
+          {t('parts.importUrl')}
         </button>
         <button type="button" className="btn-primary" onClick={() => setShowForm(true)}>
           + {t('parts.new')}
@@ -186,6 +190,16 @@ export function PartsPage() {
           onSubmit={(csv) => importCsv.mutate(csv)}
         />
       )}
+      {showUrlImport && (
+        <ImportUrlModal
+          onClose={() => setShowUrlImport(false)}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ['parts'] });
+            setShowUrlImport(false);
+            setImportMsg(t('parts.importUrlOk'));
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -238,6 +252,142 @@ function ImportCsvModal({
             onClick={() => onSubmit(csv)}
           >
             {busy ? '...' : t('parts.import')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportUrlModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState('');
+  const [preview, setPreview] = useState<{
+    name: string | null;
+    partNumber: string | null;
+    manufacturer: string | null;
+    description: string | null;
+    footprint: string | null;
+    confidence: string;
+    signals: string[];
+    sourceUrl: string;
+  } | null>(null);
+  const [name, setName] = useState('');
+  const [partNumber, setPartNumber] = useState('');
+  const [manufacturer, setManufacturer] = useState('');
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const runPreview = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const p = await apiPost<{
+        name: string | null;
+        partNumber: string | null;
+        manufacturer: string | null;
+        description: string | null;
+        footprint: string | null;
+        confidence: string;
+        signals: string[];
+        sourceUrl: string;
+      }>('/api/parts/import-url/preview', { url: url.trim() });
+      setPreview(p);
+      setName(p.name ?? '');
+      setPartNumber(p.partNumber ?? '');
+      setManufacturer(p.manufacturer ?? '');
+      setDescription(p.description ?? '');
+    } catch (e) {
+      setError(e instanceof AppError ? e.message : t('common.error'));
+      setPreview(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const create = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiPost('/api/parts/import-url', {
+        url: url.trim(),
+        name: name.trim() || undefined,
+        partNumber: partNumber.trim() || undefined,
+        manufacturer: manufacturer || null,
+        description: description || null,
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof AppError ? e.message : t('common.error'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-20">
+      <div className="card w-full max-w-lg space-y-3 max-h-[90vh] overflow-y-auto">
+        <h2 className="font-semibold">{t('parts.importUrl')}</h2>
+        <p className="text-xs text-zinc-400">{t('parts.importUrlHint')}</p>
+        <div>
+          <label className="label">URL *</label>
+          <input
+            className="input font-mono text-xs"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://..."
+          />
+        </div>
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          disabled={busy || !url.trim()}
+          onClick={() => void runPreview()}
+        >
+          {busy ? '...' : t('parts.previewUrl')}
+        </button>
+        {preview && (
+          <div className="space-y-2 border-t border-border pt-2">
+            <div className="text-xs text-zinc-500">
+              {t('parts.confidence')}: {preview.confidence} · {preview.signals.join(', ')}
+            </div>
+            <div>
+              <label className="label">{t('parts.fields.name')}</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('parts.fields.partNumber')}</label>
+              <input className="input font-mono" value={partNumber} onChange={(e) => setPartNumber(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('parts.fields.manufacturer')}</label>
+              <input className="input" value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">{t('parts.fields.description')}</label>
+              <textarea className="input" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+          </div>
+        )}
+        {error && <div className="text-red-400 text-sm">{error}</div>}
+        <div className="flex gap-2 justify-end">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busy || !preview || !name.trim() || !partNumber.trim()}
+            onClick={() => void create()}
+          >
+            {busy ? '...' : t('common.save')}
           </button>
         </div>
       </div>

@@ -56,6 +56,11 @@
     "import": "Import",
     "importHint": "Header: name, partNumber, manufacturer, description, footprint, unit, notes, category, tags (tags separated by ;).",
     "importResult": "Import done: created {{created}}, updated {{updated}}, skipped {{skipped}}, errors {{errors}}",
+    "importUrl": "Import from URL",
+    "importUrlHint": "Reads metadata (JSON-LD / Open Graph). Bot-blocked shops may fail. Private IPs are blocked.",
+    "previewUrl": "Preview",
+    "importUrlOk": "Part created from URL",
+    "confidence": "Confidence",
     "delete": "Delete",
     "edit": "Edit",
     "view": "View"

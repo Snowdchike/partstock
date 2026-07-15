@@ -56,6 +56,11 @@
     "import": "Nhập",
     "importHint": "Header: name, partNumber, manufacturer, description, footprint, unit, notes, category, tags (tags cách nhau ;).",
     "importResult": "Nhập xong: tạo {{created}}, cập nhật {{updated}}, bỏ {{skipped}}, lỗi {{errors}}",
+    "importUrl": "Nhập từ URL",
+    "importUrlHint": "Lấy metadata (JSON-LD / Open Graph). Shop chặn bot có thể fail. Không quét IP nội bộ.",
+    "previewUrl": "Xem trước",
+    "importUrlOk": "Đã tạo part từ URL",
+    "confidence": "Độ tin",
     "delete": "Xóa",
     "edit": "Sửa",
     "view": "Chi tiết"

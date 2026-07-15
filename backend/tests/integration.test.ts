@@ -964,6 +964,28 @@ describe('scan lookup', () => {
   });
 });
 
+describe('parts import from URL', () => {
+  it('blocks private/ssrf targets', async () => {
+    const { cookies, csrf } = await registerAndLogin();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parts/import-url/preview',
+      headers: { cookie: cookies, 'x-csrf-token': csrf },
+      payload: { url: 'http://127.0.0.1:9/secret' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('requires auth', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parts/import-url/preview',
+      payload: { url: 'https://example.com' },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
 describe('parts CSV import/export', () => {
   it('exports CSV and imports creating categories/tags', async () => {
     const { cookies, csrf } = await registerAndLogin();
